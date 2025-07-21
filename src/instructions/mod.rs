@@ -2,6 +2,10 @@ pub mod init_multisig;
 
 pub use init_multisig::*;
 
+pub mod close_proposal;
+
+pub use close_proposal::process_close_proposal_instruction;
+
 use pinocchio::program_error::ProgramError;
 
 pub enum MultisigInstructions {

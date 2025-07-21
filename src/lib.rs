@@ -19,7 +19,7 @@ use instructions::*;
 
 entrypoint!(process_instruction);
 
-pinocchio_pubkey::declare_id!("4ibrEMW5F6hKnkW4jVedswYv6H6VtwPN6ar6dvXDN1nT");
+pinocchio_pubkey::declare_id!("3Cxo8aHmXk4thjhEM2Upm5Mdupj9NNhJ94LdkGaGskbs");
 
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -33,12 +33,20 @@ pub fn process_instruction(
 
     let (discriminator, data) = data.split_first().ok_or(ProgramError::InvalidAccountData)?;
 
-    match MultisigInstructions::try_from(discriminator)? {
-        MultisigInstructions::InitMultisig => instructions::process_init_multisig_instruction(accounts, data)?,
-        //MultisigInstructions::UpdateMultisig => instructions::process_init_multisig_instruction(accounts, data)?,
-        //MultisigInstructions::CreateProposal => instructions::process_init_multisig_instruction(accounts, data)?,
-        //MultisigInstructions::Vote => instructions::process_init_multisig_instruction(accounts, data)?,
-    }
+  match MultisigInstructions::try_from(discriminator)? {
+    MultisigInstructions::InitMultisig => {
+        instructions::process_init_multisig_instruction(accounts, data)?
+    },
+    MultisigInstructions::CloseProposal => {
+        instructions::process_close_proposal_instruction(accounts, data)?
+    },
+    MultisigInstructions::UpdateMultisig 
+    | MultisigInstructions::CreateProposal 
+    | MultisigInstructions::Vote => {
+        // Not yet implemented by other teams
+        return Err(ProgramError::InvalidInstructionData);
+    },
+}
 
     Ok(())
 }

@@ -1,0 +1,21 @@
+{
+  "name": "pinocchio-multisig-tests",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "description": "Tests for Pinocchio Multisig Program",
+  "main": "index.js",
+  "scripts": {
+     "test": "mocha --require ts-node/register **/*.cts",
+    "test:close": "mocha --require ts-node/register close_proposal.cts"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.87.6",
+    "@types/node": "24.0.15",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "chai": "5.2.0",
+    "@types/chai": "5.2.1",
+    "mocha": "11.7.0",
+    "@types/mocha": "^10.0.0"
+  }
+}
