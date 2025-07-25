@@ -22,7 +22,7 @@ pub struct ProposalState {
 }
 
 impl ProposalState {
-    pub const LEN: usize = 8 + 8 + 1 + 1 + 32 * 10 + 32 * 10 + 32 * 10 + 8 ; // Adjust size as needed
+    pub const LEN: usize = 8 + 8 + 1 + 1 + 32 * 10 + 10 + 8; // proposal_id + expiry + result + bump + active_members + votes + created_time
 
     pub fn from_account_info_unchecked(account_info: &AccountInfo) -> &mut Self {
         unsafe { &mut *(account_info.borrow_mut_data_unchecked().as_ptr() as *mut Self) }
