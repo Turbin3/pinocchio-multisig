@@ -38,6 +38,7 @@ pub fn process_instruction(
         //MultisigInstructions::UpdateMultisig => instructions::process_init_multisig_instruction(accounts, data)?,
         //MultisigInstructions::CreateProposal => instructions::process_init_multisig_instruction(accounts, data)?,
         //MultisigInstructions::Vote => instructions::process_init_multisig_instruction(accounts, data)?,
+        MultisigInstructions::ExecuteTransaction => instructions::process_execute_transaction_instruction(accounts, data)?,
     }
 
     Ok(())
