@@ -30,7 +30,6 @@ pub fn process_instruction(
     assert_eq!(program_id, &ID);
     
 
-
     let (discriminator, data) = data.split_first().ok_or(ProgramError::InvalidAccountData)?;
 
     match MultisigInstructions::try_from(discriminator)? {
