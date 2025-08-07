@@ -24,3 +24,7 @@ shank = "0.4.2"
 [features]
 default = []
 std = []
+
+[dev-dependencies]
+litesvm = "0.6.1"
+solana-sdk = "2.2.1"
