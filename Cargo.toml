@@ -1,5 +1,3 @@
-cargo-features = ["edition2024"]
-
 [package]
 name = "pinocchio-multisig"
 version = "0.1.0"
@@ -24,3 +22,7 @@ shank = "0.4.2"
 [features]
 default = []
 std = []
+
+[dev-dependencies]
+litesvm = "0.6.1"
+solana-sdk = "2.2.1"
