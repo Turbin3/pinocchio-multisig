@@ -10,7 +10,7 @@ use pinocchio::{
     sysvars::{Sysvar, clock::Clock, rent::Rent},
 };
 pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [creator, proposal_account, multisig_account, _remaining @ ..] = accounts else {
+    let [creator, proposal_account, multisig_account,rent_sysvar_acc, _remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -33,10 +33,12 @@ pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]
     }
 
     if proposal_account.owner() != &crate::ID {
+        let rent = Rent::from_account_info(rent_sysvar_acc)?;
+
         pinocchio_system::instructions::CreateAccount {
             from: creator,
             to: proposal_account,
-            lamports: Rent::get()?.minimum_balance(ProposalState::LEN),
+            lamports: rent.minimum_balance(ProposalState::LEN),
             space: ProposalState::LEN as u64,
             owner: &crate::ID,
         }
