@@ -1,40 +1,5 @@
-use pinocchio::{
-    account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey};
 
-#[repr(C)]
-pub struct ProposalState {
-    pub proposal_id: u64, // Unique identifier for the proposal
-    pub expiry: u64,// Adjust size as needed is it needed here?
-    pub result: ProposalStatus,
-    pub bump: u8, // Bump seed for PDA
-    pub active_members: [Pubkey; 10], // Array to hold active members, adjust size as needed
-
-    //VOTE 0 - NOT VOTED
-    //VOTE 1 - FOR
-    //VOTE 2 - AGAINST
-    //VOTE 3 - ABSTAIN
-    pub votes:[u8; 10],
-
-    // imo slot
-    pub created_time: u64,
-    // analysis period
-}
-
-impl ProposalState {
-    pub const LEN: usize = 8 + 8 + 1 + 1 + 32 * 10 + 32 * 10 + 32 * 10 + 8 ; // Adjust size as needed
-
-    pub fn from_account_info_unchecked(account_info: &AccountInfo) -> &mut Self {
-        unsafe { &mut *(account_info.borrow_mut_data_unchecked().as_ptr() as *mut Self) }
-    }
-
-    pub fn from_account_info(account_info: &AccountInfo) -> Result<&mut Self, pinocchio::program_error::ProgramError> {
-        if account_info.data_len() < Self::LEN {
-            return Err(pinocchio::program_error::ProgramError::InvalidAccountData);
-        }
-        Ok(Self::from_account_info_unchecked(account_info))
-    }
-}
 #[repr(u8)]
 pub enum ProposalStatus {
     Draft = 0,
@@ -43,8 +8,6 @@ pub enum ProposalStatus {
     Succeeded = 3,
     Cancelled = 4,
 }
-
-
 impl TryFrom<&u8> for ProposalStatus {
     type Error = ProgramError;
 
@@ -57,5 +20,38 @@ impl TryFrom<&u8> for ProposalStatus {
             4 => Ok(ProposalStatus::Cancelled),
             _ => Err(ProgramError::InvalidInstructionData),
         }
+    }
+}
+
+#[repr(u8)]
+pub enum TxType {
+    Base = 0,
+    ConfigEdit = 1,
+}
+
+#[repr(C)]
+pub struct ProposalState {
+    pub multisig: Pubkey,
+    pub transaction_index: u64,
+    pub status: ProposalStatus,
+    pub tx_type: TxType,
+    pub yes_votes: u8,
+    pub no_votes: u8,
+    pub expiry: u64,
+    pub bump: u8,
+}
+
+impl ProposalState {
+    pub const LEN: usize = size_of::<Self>();
+
+    pub fn from_account_info_unchecked(account_info: &AccountInfo) -> &mut Self {
+        unsafe { &mut *(account_info.borrow_mut_data_unchecked().as_ptr() as *mut Self) }
+    }
+
+    pub fn from_account_info(account_info: &AccountInfo) -> Result<&mut Self, ProgramError> {
+        if account_info.data_len() < Self::LEN {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        Ok(Self::from_account_info_unchecked(account_info))
     }
 }

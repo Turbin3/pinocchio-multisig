@@ -5,8 +5,10 @@
 extern crate std;
 
 use pinocchio::{
-    account_info::AccountInfo, entrypoint, program_error::ProgramError, pubkey::Pubkey,
-    ProgramResult,
+
+    ProgramResult, account_info::AccountInfo, entrypoint, program_error::ProgramError,
+    pubkey::Pubkey,
+
 };
 
 mod instructions;
@@ -32,7 +34,9 @@ pub fn process_instruction(
             instructions::process_init_multisig_instruction(accounts, data)?
         }
         //MultisigInstructions::UpdateMultisig => instructions::process_init_multisig_instruction(accounts, data)?,
-        //MultisigInstructions::CreateProposal => instructions::process_init_multisig_instruction(accounts, data)?,
+        MultisigInstructions::CreateProposal => {
+            instructions::process_create_proposal_instruction(accounts, data)?
+        }
         //MultisigInstructions::Vote => instructions::process_init_multisig_instruction(accounts, data)?,
         _ => todo!(),
     }
