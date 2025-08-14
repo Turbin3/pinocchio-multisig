@@ -30,7 +30,6 @@ pub fn process_instruction(
 
     match MultisigInstructions::try_from(discriminator)? {
         MultisigInstructions::InitMultisig => instructions::process_init_multisig_instruction(accounts, data)?,
-        MultisigInstructions::CreateTransaction => instructions::process_create_transaction(accounts, data)?,
         //MultisigInstructions::UpdateMultisig => instructions::process_init_multisig_instruction(accounts, data)?,
         //MultisigInstructions::CreateProposal => instructions::process_init_multisig_instruction(accounts, data)?,
         //MultisigInstructions::Vote => instructions::process_init_multisig_instruction(accounts, data)?,

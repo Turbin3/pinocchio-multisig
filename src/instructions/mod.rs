@@ -1,8 +1,6 @@
 pub mod init_multisig;
-pub mod create_transaction;
 
 pub use init_multisig::*;
-pub use create_transaction::*;
 
 use pinocchio::program_error::ProgramError;
 
@@ -16,7 +14,6 @@ pub enum MultisigInstructions {
     // Vote = 3, // Shrinath + Mohammed + shradesh
     // // will close if expiry achieved & votes < threshold || execute if votes >= threshold
     // CloseProposal = 4, // Nanasi + Mishal + Apaar + Ghazal 
-    CreateTransaction = 2,
     //Santoshi CHAD own version
 }
 
@@ -30,7 +27,6 @@ impl TryFrom<&u8> for MultisigInstructions {
             // 2 => Ok(MultisigInstructions::CreateProposal),
             // 3 => Ok(MultisigInstructions::Vote),
             // 4 => Ok(MultisigInstructions::CloseProposal),
-            2 => Ok(MultisigInstructions::CreateTransaction),
             _ => Err(ProgramError::InvalidInstructionData),
         }
     }
