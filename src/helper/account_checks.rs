@@ -13,7 +13,3 @@ pub fn check_signer(account: &AccountInfo) -> Result<(), ProgramError> {
     }
     Ok(())
 }
-
-
-
- 
