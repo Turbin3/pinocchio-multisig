@@ -17,8 +17,9 @@ fn test_init_transaction() {
         0u64.to_le_bytes().to_vec(),            // transaction_index: u64 (8 bytes)
         fee_payer_pubkey.to_bytes().to_vec(),   // tx_maker: Pubkey (32 bytes)
         vec![0; 512],                           // tx_buffer: [u8; 512] (512 bytes)
-        0u16.to_le_bytes().to_vec(),            // buffer_size: u16 (2 bytes)
-        vec![0; 6],                             // 6 bytes of padding at the end
+        0u16.to_le_bytes().to_vec(),            // buffer_size: u16 (2 bytes),
+        0u8.to_le_bytes().to_vec(),             // bump: u8 (1 byte)
+        vec![0; 5],                             // 5 bytes of padding at the end
     ]
     .concat();
 
