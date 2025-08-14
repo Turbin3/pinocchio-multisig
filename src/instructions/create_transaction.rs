@@ -14,7 +14,7 @@ use crate::{
     },
     helper::{
         utils::{load_ix_data, DataLen},
-        account_checks::{check_pda_valid, check_signer},
+        account_checks::check_signer,
         account_init::{create_pda_account, HasOwner},
     },
 };
@@ -51,7 +51,9 @@ pub fn process_create_transaction(accounts: &[AccountInfo], data: &[u8]) -> Prog
 
     check_signer(&payer)?;
 
-    check_pda_valid(&transaction_acc)?;
+    if !transaction_acc.data_is_empty() {
+        return Err(ProgramError::AccountAlreadyInitialized);
+    }
 
     let rent = Rent::from_account_info(sysvar_rent_acc)?;
 

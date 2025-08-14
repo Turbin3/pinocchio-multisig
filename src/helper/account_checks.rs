@@ -14,13 +14,6 @@ pub fn check_signer(account: &AccountInfo) -> Result<(), ProgramError> {
     Ok(())
 }
 
-#[inline(always)]
-pub fn check_pda_valid(account: &AccountInfo) -> Result<(), ProgramError> {
-    if !account.data_is_empty() && account.owner().ne(&crate::ID){
-        return Err(ProgramError::AccountAlreadyInitialized);
-    }
-    Ok(())
-}
 
 
  
