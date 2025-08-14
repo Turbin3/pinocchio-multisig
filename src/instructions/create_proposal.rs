@@ -8,16 +8,17 @@ use pinocchio::{
     program_error::ProgramError,
     pubkey,
     sysvars::{Sysvar, clock::Clock, rent::Rent},
+    instruction::{Seed, Signer},
 };
 pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [creator, proposal_account, multisig_account,rent_sysvar_acc, _remaining @ ..] = accounts else {
+    let [creator, proposal_account, multisig_account, rent_sysvar_acc, _remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
     let multisig = Multisig::from_account_info(multisig_account)?;
 
     let bump = unsafe { *(data.as_ptr() as *const u8) };
-    let bump_bytes = bump.to_le_bytes();
+    let bump_bytes = [bump.to_le()];
     let seed = [
         (b"proposal"),
         multisig_account.key().as_ref(),
@@ -35,6 +36,13 @@ pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]
     if proposal_account.owner() != &crate::ID {
         let rent = Rent::from_account_info(rent_sysvar_acc)?;
 
+        let cpi_seed = [
+            Seed::from(b"proposal"),
+            Seed::from(multisig_account.key().as_ref()),
+            Seed::from(&bump_bytes),
+        ];
+        let cpi_signer = Signer::from(&cpi_seed[..]);
+
         pinocchio_system::instructions::CreateAccount {
             from: creator,
             to: proposal_account,
@@ -42,7 +50,7 @@ pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]
             space: ProposalState::LEN as u64,
             owner: &crate::ID,
         }
-        .invoke()?;
+        .invoke_signed(&[cpi_signer])?;
     } else {
         return Err(ProgramError::AccountAlreadyInitialized);
     }
