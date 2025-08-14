@@ -1,6 +1,6 @@
 use pinocchio::{
     account_info::AccountInfo,
-    instruction::{Seed, Signer},
+    instruction::Seed,
     program_error::ProgramError,
     pubkey::{self, Pubkey},
     ProgramResult,
@@ -10,10 +10,10 @@ use pinocchio::{
 use crate::helper::account_init::StateDefinition;
 use crate::{
     state::{
-        utils::{load_ix_data, DataLen},
         TransactionState,
     },
     helper::{
+        utils::{load_ix_data, DataLen},
         account_checks::{check_ix_payer_valid, check_pda_valid, check_signer, derive_pda_valid},
         account_init::{create_pda_account, HasOwner},
     },
@@ -65,7 +65,14 @@ pub fn process_create_transaction(accounts: &[AccountInfo], data: &[u8]) -> Prog
 
     derive_pda_valid(&transaction_acc, &derived_transaction_pda)?;
 
-    create_pda_account::<TransactionState, CreateTransactionIxData>(&payer, &transaction_acc, &ix_data, &rent)?;
+    let bump_bytes = [bump];
+    let signer_seeds = [
+        Seed::from(TransactionState::SEED.as_bytes()),
+        Seed::from(ix_data.owner()),
+        Seed::from(&bump_bytes[..]),
+    ];
+
+    create_pda_account::<TransactionState>(&payer, &transaction_acc, &signer_seeds, &rent)?;
 
     // let pda_bump_bytes = [bump];
     // let signer_seeds = [
