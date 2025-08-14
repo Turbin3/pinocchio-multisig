@@ -14,7 +14,7 @@ use crate::{
     },
     helper::{
         utils::{load_ix_data, DataLen},
-        account_checks::{check_ix_payer_valid, check_pda_valid, check_signer, derive_pda_valid},
+        account_checks::{check_pda_valid, check_signer},
         account_init::{create_pda_account, HasOwner},
     },
 };
@@ -57,13 +57,17 @@ pub fn process_create_transaction(accounts: &[AccountInfo], data: &[u8]) -> Prog
 
     let ix_data = unsafe { load_ix_data::<CreateTransactionIxData>(&data)? };
 
-    check_ix_payer_valid(&payer, &ix_data.tx_maker)?;
+    if ix_data.tx_maker.ne(payer.key()) {
+        return Err(ProgramError::InvalidAccountOwner);
+    }
 
     let seeds = &[TransactionState::SEED.as_bytes(), &ix_data.tx_maker];
 
     let (derived_transaction_pda, bump) = pubkey::find_program_address(seeds, &crate::ID);
 
-    derive_pda_valid(&transaction_acc, &derived_transaction_pda)?;
+    if derived_transaction_pda.ne(transaction_acc.key()) {
+        return Err(ProgramError::InvalidAccountOwner);
+    }
 
     let bump_bytes = [bump];
     let signer_seeds = [

@@ -15,27 +15,12 @@ pub fn check_signer(account: &AccountInfo) -> Result<(), ProgramError> {
 }
 
 #[inline(always)]
-pub fn check_ix_payer_valid(account: &AccountInfo, ix_payer: &Pubkey) -> Result<(), ProgramError> {
-    if account.key() != ix_payer {
-        return Err(ProgramError::MissingRequiredSignature);
-    }
-    Ok(())
-}
-
-#[inline(always)]
 pub fn check_pda_valid(account: &AccountInfo) -> Result<(), ProgramError> {
-    if !account.data_is_empty() {
+    if !account.data_is_empty() && account.owner().ne(&crate::ID){
         return Err(ProgramError::AccountAlreadyInitialized);
     }
     Ok(())
 }
 
-#[inline(always)]
-pub fn derive_pda_valid(account: &AccountInfo, pubkey: &Pubkey) -> Result<(), ProgramError> {
-    if pubkey.ne(account.key()) {
-        return Err(ProgramError::InvalidAccountOwner);
-    }
-    Ok(())
-}
 
  
