@@ -9,8 +9,8 @@ use pinocchio::{
     ProgramResult,
 };
 
-mod instructions;
 mod helper;
+mod instructions;
 mod state;
 
 use instructions::*;
@@ -31,7 +31,9 @@ pub fn process_instruction(
     match MultisigInstructions::try_from(discriminator)? {
         MultisigInstructions::InitMultisig => {
             instructions::process_init_multisig_instruction(accounts, data)?
-        },
+        }
+        MultisigInstructions::AddMember => instructions::add_member(accounts, data)?,
+        MultisigInstructions::RemoveMember => instructions::remove_member(accounts, data)?,
         //MultisigInstructions::UpdateMultisig => instructions::process_init_multisig_instruction(accounts, data)?,
         //MultisigInstructions::CreateProposal => instructions::process_init_multisig_instruction(accounts, data)?,
         //MultisigInstructions::Vote => instructions::process_init_multisig_instruction(accounts, data)?,
