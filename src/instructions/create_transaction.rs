@@ -15,7 +15,7 @@ use crate::{
     helper::{
         utils::{load_ix_data, DataLen},
         account_checks::check_signer,
-        account_init::{create_pda_account, HasOwner},
+        account_init::create_pda_account,
     },
 };
 
@@ -23,19 +23,12 @@ use crate::{
 #[derive(Clone, Copy, Debug, PartialEq, shank::ShankType)]
 pub struct CreateTransactionIxData {
     pub transaction_index: u64,  // 8 bytes
-    pub tx_maker: Pubkey,        // 32 bytes
     pub tx_buffer: [u8; 512],    // 512 bytes
     pub buffer_size: u16,        // 2 bytes
 }
 
 impl DataLen for CreateTransactionIxData {
     const LEN: usize = core::mem::size_of::<CreateTransactionIxData>();
-}
-
-impl HasOwner for CreateTransactionIxData {
-    fn owner(&self) -> &Pubkey {
-        &self.tx_maker
-    }
 }
 
 pub fn process_create_transaction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
@@ -58,12 +51,7 @@ pub fn process_create_transaction(accounts: &[AccountInfo], data: &[u8]) -> Prog
     let rent = Rent::from_account_info(sysvar_rent_acc)?;
 
     let ix_data = unsafe { load_ix_data::<CreateTransactionIxData>(&data)? };
-
-    if ix_data.tx_maker.ne(payer.key()) {
-        return Err(ProgramError::InvalidAccountOwner);
-    }
-
-    let seeds = &[TransactionState::SEED.as_bytes(), &ix_data.tx_maker];
+    let seeds = &[TransactionState::SEED.as_bytes(), payer.key()];
 
     let (derived_transaction_pda, bump) = pubkey::find_program_address(seeds, &crate::ID);
 
@@ -74,7 +62,7 @@ pub fn process_create_transaction(accounts: &[AccountInfo], data: &[u8]) -> Prog
     let bump_bytes = [bump];
     let signer_seeds = [
         Seed::from(TransactionState::SEED.as_bytes()),
-        Seed::from(ix_data.owner()),
+        Seed::from(payer.key()),
         Seed::from(&bump_bytes[..]),
     ];
 
