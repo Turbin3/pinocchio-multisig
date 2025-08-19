@@ -1,10 +1,10 @@
+pub mod member;
 pub mod multisig;
 pub mod proposal;
-pub mod multisig_config;
 pub mod vote;
 
-
-pub use vote::*;
-pub use proposal::*;
+pub use member::*;
 pub use multisig::*;
-pub use multisig_config::*;
+pub use proposal::*;
+pub use vote::*;
+

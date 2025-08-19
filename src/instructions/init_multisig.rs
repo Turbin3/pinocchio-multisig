@@ -1,80 +1,95 @@
 use pinocchio::{
-    account_info::AccountInfo, 
-    program_error::ProgramError, 
-    pubkey::{
-        self, 
-        Pubkey
-    }, 
-    sysvars::{
-        rent::Rent, 
-        Sysvar
-    }, 
-    ProgramResult
+    account_info::AccountInfo,
+    instruction::{Seed, Signer},
+    program_error::ProgramError,
+    pubkey::{self, Pubkey},
+    ProgramResult,
+    sysvars::rent::Rent,
 };
-use pinocchio_log::log;
 
-use crate::state::{multisig_config, Multisig};
+use crate::state::MultisigState;
+use crate::helper::{
+    utils::{load_ix_data, DataLen},
+    account_checks::check_signer,
+    account_init::{create_pda_account, StateDefinition},
+};
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, shank::ShankType)]
+pub struct InitMultisigIxData {
+    pub max_expiry: u64,      // 8 bytes
+    pub primary_seed: u16,    // 2 bytes
+    pub min_threshold: u8,    // 1 byte
+    pub num_members: u8,      // 1 byte    
+}
+
+impl DataLen for InitMultisigIxData {
+    const LEN: usize = core::mem::size_of::<InitMultisigIxData>();
+}
 
 pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [creator, multisig,multisig_config,treasury, _remaining @ ..] = accounts else {
-        return Err(ProgramError::NotEnoughAccountKeys)
+    let [creator, multisig, treasury, rent, _remaining @ ..] = accounts else {
+        return Err(ProgramError::NotEnoughAccountKeys);
     };
-    // Multisig PDA
-    let bump = unsafe{ *(data.as_ptr() as *const u8) }.to_le_bytes();
-    let seed = [(b"multisig"), creator.key().as_slice(), bump.as_ref()];
-    let seeds = &seed[..];
 
-    let pda = pubkey::checked_create_program_address(seeds, &crate::ID).unwrap(); //derive_address
-    assert_eq!(&pda, multisig.key());
+    check_signer(&creator)?;
 
-    // Multisig_config PDA
-    let multisig_config_seed = [(b"multisig_config"), multisig.key().as_slice(), bump.as_ref()];
-    let multisig_config_seeds = &multisig_config_seed[..];
-    let pda_config = pubkey::checked_create_program_address(multisig_config_seeds, &crate::ID).unwrap(); //derive_address
-    assert_eq!(&pda_config, multisig_config.key());
-
-    // Treasury PDA
-    let treasury_seed = [(b"treasury"), multisig.key().as_slice(), bump.as_ref()];
-    let treasury_seeds = &treasury_seed[..];
-    let pda_treasury = pubkey::checked_create_program_address(treasury_seeds, &crate::ID).unwrap(); //derive_address
-    assert_eq!(&pda_treasury, treasury.key());
-
-
-
-    if multisig.owner() != &crate::ID {
-        log!("Creating Multisig Account");
-
-        // Create Multisig Account
-        pinocchio_system::instructions::CreateAccount {
-            from: creator,
-            to: multisig,
-            lamports: Rent::get()?.minimum_balance(Multisig::LEN),
-            space: Multisig::LEN as u64,
-            owner: &crate::ID,
-        }.invoke()?;
-
-        // Populate Multisig Account
-        let multisig_account = Multisig::from_account_info(&multisig)?;
-        multisig_account.creator = *creator.key();
-        multisig_account.num_members = unsafe { *(data.as_ptr().add(1) as *const u8) };
-        multisig_account.members = [Pubkey::default(); 10]; // Initialize with default Pubkeys
-        match multisig_account.num_members {
-            0..=10 => {
-                for i in 0..multisig_account.num_members as usize {
-                    let member_key = unsafe { *(data.as_ptr().add(2 + i * 32) as *const [u8; 32]) };
-                    multisig_account.members[i] = member_key;
-                }
-            },
-            _ => return Err(ProgramError::InvalidAccountData),
-        }
-        multisig_account.bump = unsafe{ *(data.as_ptr() as *const u8) };
-        
-
-        log!("members: {}", unsafe { *(data.as_ptr().add(1) as *const u8)});
+    if !multisig.data_is_empty() {
+        return Err(ProgramError::AccountAlreadyInitialized);
     }
-    else {
-        return Err(ProgramError::AccountAlreadyInitialized)
-    }
+
+    let rent = Rent::from_account_info(rent)?;
+
+    let ix_data = unsafe { load_ix_data::<InitMultisigIxData>(&data)? };
+
+    // Multisig Config PDA
+    let seeds = &[MultisigState::SEED.as_bytes(), &ix_data.primary_seed.to_le_bytes()];
+    let (pda_multisig, multisig_bump) = pubkey::find_program_address(seeds, &crate::ID);
     
+    if pda_multisig.ne(multisig.key()) {
+        return Err(ProgramError::InvalidAccountOwner);
+    }
+   
+    // Treasury PDA
+    let treasury_seed = [(b"treasury"), multisig.key().as_slice()];
+    let treasury_seeds = &treasury_seed[..];
+    let (pda_treasury, treasury_bump) = pubkey::find_program_address(treasury_seeds, &crate::ID);
+    
+    if pda_treasury.ne(treasury.key()) {
+        return Err(ProgramError::InvalidAccountOwner);
+    }
+
+    let bump_bytes = [multisig_bump];
+    let primary_seed_bytes = ix_data.primary_seed.to_le_bytes();
+    let signer_seeds = [
+        Seed::from(MultisigState::SEED.as_bytes()),
+        Seed::from(&primary_seed_bytes),
+        Seed::from(&bump_bytes[..]),
+    ];
+
+    create_pda_account::<MultisigState>(&creator, &multisig, &signer_seeds, &rent)?;
+
+    let multisig_account = MultisigState::from_account_info(&multisig)?;
+    multisig_account.new(
+        treasury.key(),
+        treasury_bump,
+        multisig_bump,
+        ix_data,
+    );
+
+    if !treasury.data_is_empty() {
+        return Err(ProgramError::AccountAlreadyInitialized);
+    }
+
+    // Create treasury account with correct signer seeds
+    let treasury_bump_bytes = [treasury_bump];
+    let treasury_signer_seeds = [
+        Seed::from(b"treasury"),
+        Seed::from(multisig.key()),
+        Seed::from(&treasury_bump_bytes),
+    ];
+
+    create_pda_account::<MultisigState>(&creator, &treasury, &treasury_signer_seeds, &rent)?;
+
     Ok(())
 }
