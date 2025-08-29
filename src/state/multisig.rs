@@ -1,16 +1,26 @@
 use pinocchio::{account_info::{AccountInfo, Ref}, program_error::ProgramError, pubkey::Pubkey, ProgramResult};
 use core::mem::size_of;
 
+use bytemuck::{Pod, Zeroable};
+
 use crate::helper::account_init::StateDefinition;
 use crate::instructions::init_multisig::InitMultisigIxData;
 
+#[derive(Pod, Zeroable, Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
 pub struct MultisigState {
     pub seed: u64,
-    /// Admin account for the multisig optional
-    pub admin: Pubkey, 
     /// Admin spending limit
-    pub admin_spending_limit: u64, 
+    pub admin_spending_limit: u64,
+    /// Maximum expiry time for proposals
+    pub max_expiry: u64,
+    /// The index of the last transaction executed
+    pub transaction_index: u64,
+    // Last stale transaction index. All transactions up until this index are stale.
+    pub stale_transaction_index: u64,
+    pub primary_seed: u16,
+    /// Admin account for the multisig optional
+    pub admin: Pubkey,    
     /// Treasury account for the multisig, optional
     pub treasury: Pubkey,      
     /// Bump seed for the treasury PDA
@@ -18,17 +28,10 @@ pub struct MultisigState {
     /// Bump seed for the multisig PDA 
     pub bump: u8,             
     /// Minimum number of signers required to execute a proposal
-    pub min_threshold: u8,     
-    /// Maximum expiry time for proposals
-    pub max_expiry: u64,       
-    /// The index of the last transaction executed
-    pub transaction_index: u64, 
-    // Last stale transaction index. All transactions up until this index are stale.
-    pub stale_transaction_index: u64, 
+    pub min_threshold: u8,    
     pub num_members: u8,
     pub members_counter: u8,
     pub admin_counter: u8,
-    pub primary_seed: u16,
 }
 
 impl StateDefinition for MultisigState {
