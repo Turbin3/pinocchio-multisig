@@ -3,16 +3,20 @@ use pinocchio::{
     program_error::ProgramError,
     ProgramResult,
 };
+
+use bytemuck::{Pod, Zeroable};
+
 use crate::instructions::create_transaction::CreateTransactionIxData;
 use crate::helper::account_init::StateDefinition;
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, shank::ShankAccount)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable, shank::ShankAccount)]
 pub struct TransactionState {
-    pub transaction_index: u64,
-    pub tx_buffer: [u8; 512],
+    pub transaction_index: u64,    
     pub buffer_size: u16,
+    pub tx_buffer: [u8; 512],
     pub bump: u8,
+    pub _padding: [u8; 5],
 }
 
 impl StateDefinition for TransactionState {
