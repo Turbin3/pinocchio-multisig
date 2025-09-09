@@ -1,5 +1,7 @@
 pub mod init_multisig;
 pub mod create_transaction;
+mod add_member;
+mod remove_member;
 
 pub use init_multisig::*;
 pub use create_transaction::*;
@@ -18,6 +20,8 @@ pub enum MultisigInstructions {
     CloseProposal = 4, // Nanasi + Mishal + Apaar + Ghazal
     CreateTransaction = 5,
     //Santoshi CHAD own version
+    AddMember = 6,
+    RemoveMember = 7,
 }
 
 impl TryFrom<&u8> for MultisigInstructions {
@@ -31,6 +35,8 @@ impl TryFrom<&u8> for MultisigInstructions {
             3 => Ok(MultisigInstructions::Vote),
             4 => Ok(MultisigInstructions::CloseProposal),
             5 => Ok(MultisigInstructions::CreateTransaction),
+            6 => Ok(MultisigInstructions::AddMember),
+            7 => Ok(MultisigInstructions::RemoveMember),
             _ => Err(ProgramError::InvalidInstructionData),
         }
     }
