@@ -14,22 +14,21 @@ use crate::ID;
 
 pub fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
 
-    let [admin_account, multisig_account, member_account, rent_acc, ..] = accounts else {
+    let [admin_account, multisig_account, member_account, rent_acc, _remaining@ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
+
 
     // Instruction must contain at least 32 bytes (pubkey of new member)
     if data.len() < 32 {
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    // Admin must sign
-    if !admin_account.is_signer() {
-        return Err(ProgramError::MissingRequiredSignature);
-    }
+    
 
     // Load multisig account
     let multisig_state = multisig::MultisigState::from_account_info(multisig_account)?;
+    
 
     // Check admin authorization
     if admin_account.key() != &multisig_state.admin {
@@ -95,13 +94,12 @@ pub fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     member_state.id = idx;
     member_state.status = 1;
 
-    // Advance counter and number of members
+    // Advance counter
     multisig_state.members_counter = multisig_state
         .members_counter
         .checked_add(1)
         .ok_or(ProgramError::ArithmeticOverflow)?;
 
-    multisig_state.num_members = multisig_state.num_members.checked_add(1).ok_or(ProgramError::ArithmeticOverflow)?;
 
     log!("Created new member idx={} pubkey={}", idx, &new_member_pubkey);
     Ok(())

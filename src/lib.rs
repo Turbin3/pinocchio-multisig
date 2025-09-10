@@ -38,6 +38,13 @@ pub fn process_instruction(
         //MultisigInstructions::UpdateMultisig => instructions::process_init_multisig_instruction(accounts, data)?,
         //MultisigInstructions::CreateProposal => instructions::process_init_multisig_instruction(accounts, data)?,
         //MultisigInstructions::Vote => instructions::process_init_multisig_instruction(accounts, data)?,
+        MultisigInstructions::AddMember =>{
+            instructions::add_member(accounts, data)?
+        },
+        MultisigInstructions::RemoveMember =>{
+            instructions::remove_member(accounts, data)?
+        }
+        
         _ => todo!(),
     }
 

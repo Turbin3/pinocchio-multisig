@@ -5,6 +5,8 @@ mod remove_member;
 
 pub use init_multisig::*;
 pub use create_transaction::*;
+pub use add_member::*;
+pub use remove_member::*;
 
 use pinocchio::program_error::ProgramError;
 
