@@ -74,4 +74,16 @@ impl MultisigState {
         self.admin_counter = 0;
         self.primary_seed = ix_data.primary_seed;
     }
+
+    pub fn update_threshold(&mut self, threshold: u8) {
+        self.min_threshold = threshold;
+    }
+
+    pub fn update_spending_limit(&mut self, spending_limit: u64) {
+        self.admin_spending_limit = spending_limit;
+    }
+    
+    pub fn update_stale_transaction_index(&mut self, stale_transaction_index: u64) {
+        self.stale_transaction_index = stale_transaction_index;
+    }
 }
