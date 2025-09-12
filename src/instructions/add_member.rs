@@ -1,106 +1,94 @@
 use pinocchio::{
     account_info::AccountInfo,
-    instruction::{Seed, Signer},
     program_error::ProgramError,
-    pubkey::{self, Pubkey},
+    pubkey::Pubkey,
     sysvars::rent::Rent,
     ProgramResult,
 };
 use pinocchio_log::log;
-use pinocchio_system;
-
+use crate::helper::StateDefinition;
 use crate::state::{member, multisig};
-use crate::ID;
 
 pub fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-
-    let [admin_account, multisig_account, member_account, rent_acc, _remaining@ ..] = accounts else {
+    let [admin_account, multisig_account, rent_acc, _remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
-
-    // Instruction must contain at least 32 bytes (pubkey of new member)
+    // Must contain at least 32 bytes (pubkey)
     if data.len() < 32 {
         return Err(ProgramError::InvalidInstructionData);
-    }
-
-    
-
-    // Load multisig account
-    let multisig_state = multisig::MultisigState::from_account_info(multisig_account)?;
-    
-
-    // Check admin authorization
-    if admin_account.key() != &multisig_state.admin {
-        log!("unauthorized admin: {}", admin_account.key());
-        return Err(ProgramError::MissingRequiredSignature);
-    }
-
-    // Capacity check: if full, reject
-    if multisig_state.members_counter >= multisig_state.num_members {
-        log!(
-            "multisig full: members_counter={} / num_members={}",
-            multisig_state.members_counter,
-            multisig_state.num_members
-        );
-        return Err(ProgramError::AccountDataTooSmall);
-    }
-
-    // Extract new member pubkey
-    let mut pk_bytes = [0u8; 32];
-    pk_bytes.copy_from_slice(&data[..32]);
-    let new_member_pubkey = Pubkey::from(pk_bytes);
-
-    // Derive PDA for the next index using members_counter
-    let idx = multisig_state.members_counter;
-    let idx_bytes = [idx];
-    let seeds = [
-        b"member".as_ref(),
-        multisig_account.key().as_slice(),
-        &idx_bytes,
-    ];
-    let (expected_pda, bump) = pubkey::find_program_address(&seeds, &ID);
-
-    if expected_pda != *member_account.key() {
-        log!("invalid member_account provided: {}", member_account.key());
-        return Err(ProgramError::InvalidAccountData);
     }
 
     // Rent sysvar
     let rent = Rent::from_account_info(rent_acc)?;
 
-    // Create the new member account
-    let bump_bytes = [bump];
-    let signer_seeds = [
-        Seed::from(b"member"),
-        Seed::from(multisig_account.key().as_ref()),
-        Seed::from(&idx_bytes),
-        Seed::from(&bump_bytes),
-    ];
-    let cpi_signer = Signer::from(&signer_seeds[..]);
+    // Mutable multisig data split for existing members
+    let (_header_data, member_data) = unsafe {
+        multisig_account
+            .borrow_mut_data_unchecked()
+            .split_at_mut_unchecked(multisig::MultisigState::LEN)
+    };
 
-    pinocchio_system::instructions::CreateAccount {
-        from: admin_account,
-        to: member_account,
-        lamports: rent.minimum_balance(member::MemberState::LEN),
-        space: member::MemberState::LEN as u64,
-        owner: &ID,
+    // Load multisig state (checked)
+    let multisig_state = multisig::MultisigState::from_account_info(multisig_account)?;
+    if admin_account.key() != &multisig_state.admin {
+        log!("unauthorized admin: {}", admin_account.key());
+        return Err(ProgramError::MissingRequiredSignature);
     }
-        .invoke_signed(&[cpi_signer])?;
 
-    // Initialize member state
-    let member_state = member::MemberState::from_account_info(member_account)?;
-    member_state.pubkey = new_member_pubkey;
-    member_state.id = idx;
-    member_state.status = 1;
+    // Extract proposed member pubkey
+    let mut pk_bytes = [0u8; 32];
+    pk_bytes.copy_from_slice(&data[..32]);
+    let new_member_pubkey = Pubkey::from(pk_bytes);
 
-    // Advance counter
-    multisig_state.members_counter = multisig_state
-        .members_counter
+    // Check for duplicate member
+    for m in member_data.chunks_exact(member::MemberState::LEN) {
+        let existing = member::MemberState::from_bytes(m)?;
+        if existing.pubkey == new_member_pubkey {
+            return Err(ProgramError::InvalidInstructionData); // Already present
+        }
+    }
+
+    // Prepare new member
+    let mut new_member = member::MemberState {
+        pubkey: new_member_pubkey,
+        id: multisig_state.num_members,
+        status: 1,
+    };
+
+    // New account size
+    let new_size = multisig_account.data_len() + member::MemberState::LEN;
+    let min_balance = rent.minimum_balance(new_size);
+    let lamports_needed = min_balance.saturating_sub(multisig_account.lamports());
+    if lamports_needed > 0 {
+        //Might as well add a transfer function to gracefully do this
+        unsafe {
+            *admin_account.borrow_mut_lamports_unchecked() -= lamports_needed;
+            *multisig_account.borrow_mut_lamports_unchecked() += lamports_needed;
+        }
+    }
+
+    // Resize for new member
+    multisig_account.resize(new_size)?;
+
+    // Write new member after resize
+    let (_, new_member_data) = unsafe {
+        multisig_account
+            .borrow_mut_data_unchecked()
+            .split_at_mut_unchecked(multisig::MultisigState::LEN)
+    };
+
+    // Actually write the member data
+    let offset = (multisig_state.num_members as usize) * member::MemberState::LEN;
+    new_member_data[offset..offset + member::MemberState::LEN]
+        .copy_from_slice(&new_member.to_bytes()?);
+
+    // Update count
+    multisig_state.num_members = multisig_state
+        .num_members
         .checked_add(1)
         .ok_or(ProgramError::ArithmeticOverflow)?;
 
-
-    log!("Created new member idx={} pubkey={}", idx, &new_member_pubkey);
+    log!("Added new member pubkey={}", &new_member_pubkey);
     Ok(())
 }

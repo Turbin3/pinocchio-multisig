@@ -70,7 +70,7 @@ impl MultisigState {
         self.transaction_index = 0;
         self.stale_transaction_index = 0;
         self.num_members = ix_data.num_members;
-        self.members_counter = self.num_members;
+        self.members_counter = 0;
         self.admin_counter = 0;
         self.primary_seed = ix_data.primary_seed;
     }
