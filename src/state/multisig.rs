@@ -10,8 +10,8 @@ use crate::instructions::init_multisig::InitMultisigIxData;
 #[repr(C)]
 pub struct MultisigState {
     pub seed: u64,
-    /// Admin spending limit
-    pub admin_spending_limit: u64,
+    /// spending limit
+    pub spending_limit: u64,
     /// Maximum expiry time for proposals
     pub max_expiry: u64,
     /// The index of the last transaction executed
@@ -30,8 +30,8 @@ pub struct MultisigState {
     /// Minimum number of signers required to execute a proposal
     pub min_threshold: u8,    
     pub num_members: u8,
-    pub members_counter: u8,
     pub admin_counter: u8,
+    pub _padding: [u8; 1],
 }
 
 impl StateDefinition for MultisigState {
@@ -61,7 +61,7 @@ impl MultisigState {
         ix_data: &InitMultisigIxData,
     ) {
         self.admin = Pubkey::default();
-        self.admin_spending_limit = 0;
+        self.spending_limit = 0;
         self.treasury = *treasury;
         self.treasury_bump = treasury_bump;
         self.bump = multisig_bump;
@@ -70,7 +70,6 @@ impl MultisigState {
         self.transaction_index = 0;
         self.stale_transaction_index = 0;
         self.num_members = ix_data.num_members;
-        self.members_counter = self.num_members;
         self.admin_counter = 0;
         self.primary_seed = ix_data.primary_seed;
     }
