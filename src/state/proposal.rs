@@ -125,5 +125,6 @@ impl ProposalState {
         self.created_time = created_time;
         self.status = status;
         self.bump = bump;
+        self.tx_type = self.tx_type;
     }
 }

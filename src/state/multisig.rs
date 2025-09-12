@@ -10,7 +10,7 @@ use crate::instructions::init_multisig::InitMultisigIxData;
 #[repr(C)]
 pub struct MultisigState {
     pub seed: u64,
-    /// Admin spending limit
+    /// spending limit
     pub spending_limit: u64,
     /// Maximum expiry time for proposals
     pub max_expiry: u64,
