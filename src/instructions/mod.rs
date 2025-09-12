@@ -1,10 +1,12 @@
 pub mod create_proposal;
 pub mod create_transaction;
 pub mod init_multisig;
+pub mod execute_transaction;
 
 pub use create_proposal::*;
 pub use create_transaction::*;
 pub use init_multisig::*;
+pub use execute_transaction::*;
 
 use pinocchio::program_error::ProgramError;
 
