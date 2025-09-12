@@ -5,10 +5,11 @@ use pinocchio::{
     ProgramResult,
 };
 use pinocchio_log::log;
-
+use crate::helper::StateDefinition;
 use crate::state::{multisig, member};
+
 pub fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [admin_account, multisig_account, member_account, remaining @..] = accounts else {
+    let [admin_account, multisig_account, rent_acc, _remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -16,47 +17,55 @@ pub fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    // Load multisig
     let multisig_state = multisig::MultisigState::from_account_info(multisig_account)?;
 
-    // Admin authorization
-    if !admin_account.is_signer() {
-        return Err(ProgramError::MissingRequiredSignature);
+    // Check if we have an admin for multisig or not
+    if multisig_state.admin != Pubkey::default() {
+        //If we have an admin then check if it is the real admin or not
+        if !admin_account.is_signer() || admin_account.key() != &multisig_state.admin {
+            log!("unauthorized admin: {}", admin_account.key());
+            return Err(ProgramError::MissingRequiredSignature);
+        }
     }
 
-    if admin_account.key() != &multisig_state.admin {
-        log!("unauthorized admin: {}", admin_account.key());
-        return Err(ProgramError::MissingRequiredSignature);
-    }
-
-    // Extract member pubkey
+    // Target member pubkey extraction
     let mut pk_bytes = [0u8; 32];
     pk_bytes.copy_from_slice(&data[..32]);
     let member_to_remove = Pubkey::from(pk_bytes);
 
-    // Load and verify member
-    let member_state = member::MemberState::from_account_info(member_account)?;
+    // Locate member in dynamic member region, clear/delete if found
+    let (_header, member_data) = unsafe {
+        multisig_account
+            .borrow_mut_data_unchecked()
+            .split_at_mut_unchecked(multisig::MultisigState::LEN)
+    };
+    let mut found_idx: Option<usize> = None;
 
-    if member_state.pubkey != member_to_remove {
-        log!("pubkey mismatch: expected={}, got={}", &member_state.pubkey, &member_to_remove);
-        return Err(ProgramError::InvalidAccountData);
+    for (idx, m) in member_data.chunks_exact(member::MemberState::LEN).enumerate() {
+        let existing = member::MemberState::from_bytes(m)?;
+        if existing.pubkey == member_to_remove && existing.status != 0 {
+            found_idx = Some(idx);
+            break;
+        }
     }
 
-    if member_state.status == 0 {
-        log!("member already inactive: {}", &member_state.pubkey);
-        return Err(ProgramError::UninitializedAccount);
-    }
+    let idx = found_idx.ok_or(ProgramError::InvalidInstructionData)?;
 
-    // Update member state
-    member_state.status = 0;
-    member_state.pubkey = Pubkey::default();
+    let offset = idx * member::MemberState::LEN;
+    let slot = &mut member_data[offset..offset + member::MemberState::LEN];
 
-    // Update multisig counter
-    multisig_state.members_counter = multisig_state
-        .members_counter
+    // Load, mutate, re-serialize
+    let mut member = member::MemberState::from_bytes(slot)?;
+    member.status = 0;
+    member.pubkey = Pubkey::default();
+    slot.copy_from_slice(&member.to_bytes()?);
+
+    // Decrement count
+    multisig_state.num_members = multisig_state
+        .num_members
         .checked_sub(1)
         .ok_or(ProgramError::ArithmeticOverflow)?;
 
-    log!("Removed member: {} at index {}", &member_to_remove, member_state.id);
+    log!("Removed member: {} at index {}", &member_to_remove, idx);
     Ok(())
 }
