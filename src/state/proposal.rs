@@ -2,21 +2,26 @@ use crate::helper::account_init::StateDefinition;
 use bytemuck::{Pod, Zeroable};
 use pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey};
 
-#[derive(Pod, Zeroable, Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u8)]
+pub enum ProposalType {
+    Cpi = 0,
+    AddMember = 1,
+    RemoveMember = 2,
+    ChangeThreshold = 3,
+    ChangeSpendingLimit = 4,
+    StaleTransactionIndex = 5,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
 pub struct ProposalState {
-    pub proposal_id: i64, // Unique identifier for the proposal
-    pub expiry: u64,      // Adjust size as needed is it needed here?
+    pub proposal_id: u64, // Unique identifier for the proposal
+    pub expiry: i64,      // Adjust size as needed is it needed here?
     pub created_time: u64,
     pub transaction_index: u64,
     pub status: u8,
-    // 0 for cpi, 
-    // 1 for proposal to add member, 
-    // 2 for proposal to remove member, 
-    // 3 for proposal to change threshold, 
-    // 4 for proposal to change spending limit
-    // 5 for stale transaction index
-    pub tx_type: u8,
+    pub tx_type: ProposalType,
     pub bump: u8,          // Bump seed for PDA
     pub _padding: [u8; 5], // padding to reach multiple of 8
 }
@@ -69,11 +74,10 @@ impl TryFrom<&u8> for ProposalStatus {
 impl ProposalState {
     pub fn new(
         &mut self,
-        proposal_id: i64,
-        expiry: u64,
+        proposal_id: u64,
+        expiry: i64,
         status: ProposalStatus,
         bump: u8,
-        // active_members: [Pubkey; 10],
         votes: [u8; 10],
         created_time: u64,
     ) {

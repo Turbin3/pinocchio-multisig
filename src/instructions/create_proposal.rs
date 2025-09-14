@@ -24,20 +24,7 @@ pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]
     if data.len() < 2 {
         return Err(ProgramError::InvalidInstructionData);
     }
-
-    // const MAX_MEMBERS: usize = 10; // or whatever your max is
-    // let total_members = multisig.num_members as usize;
-    // let mut members = [Pubkey::default(); MAX_MEMBERS];
-
-    // let mut offset = 2;
-    // for i in 0..total_members.min(MAX_MEMBERS) {
-    //     let pubkey_bytes = &data[offset..offset + 32];
-    //     let member =
-    //         Pubkey::try_from(pubkey_bytes).map_err(|_| ProgramError::InvalidInstructionData)?;
-    //     members[i] = member;
-    //     offset += 32;
-    // }
-
+    
     let seeds = [(b"proposal"), multisig_account.key().as_slice()];
     let proposal_seeds = &seeds[..];
     let (proposal_pda, bump) = pubkey::find_program_address(proposal_seeds, &crate::ID);
