@@ -17,8 +17,13 @@ use crate::helper::{
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, shank::ShankType)]
 pub struct UpdateMultisigIxData {
-    pub type: u8, // 1 for update threshold, 2 for update spending limit, 3 for stale transaction index
-    pub value: u8,
+    pub value: u64, // For spending limit and stale transaction index
+    pub update_type: u8, // 1 for update threshold, 2 for update spending limit, 3 for stale transaction index    
+    pub threshold: u8, // For threshold updates
+}
+
+impl DataLen for UpdateMultisigIxData {
+    const LEN: usize = core::mem::size_of::<UpdateMultisigIxData>();
 }
 
 pub fn process_update_multisig(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
@@ -30,14 +35,14 @@ pub fn process_update_multisig(accounts: &[AccountInfo], data: &[u8]) -> Program
         return Err(ProgramError::MissingRequiredSignature);
     }
     
-    let ix_data = load_ix_data::<UpdateMultisigIxData>(data)?;
+    let ix_data = unsafe { load_ix_data::<UpdateMultisigIxData>(data)? };
 
-    let multisig_state = MultisigState::from_account_info(multisig)?;
+    let mut multisig_state = MultisigState::from_account_info(multisig)?;
 
-    match ix_data.type {
-        1 => multisig_state.update_threshold(ix_data.value as u8),
-        2 => multisig_state.update_spending_limit(ix_data.value as u64),
-        3 => multisig_state.update_stale_transaction_index(ix_data.value as u64),
+    match ix_data.update_type {
+        1 => multisig_state.update_threshold(ix_data.threshold),
+        2 => multisig_state.update_spending_limit(ix_data.value),
+        3 => multisig_state.update_stale_transaction_index(ix_data.value),
         _ => return Err(ProgramError::InvalidInstructionData),
     }
 
