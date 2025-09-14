@@ -11,6 +11,7 @@ use bytemuck::{Pod, Zeroable};
 use crate::instructions::create_transaction::CreateTransactionIxData;
 use crate::helper::account_init::StateDefinition;
 use crate::state::multisig::MultisigState;
+use crate::state::proposal::ProposalType;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, shank::ShankAccount, Pod, Zeroable)]
@@ -96,7 +97,7 @@ impl TransactionState {
     }
 
     /// execute tx fun
-    pub fn execute(tx_type: u8, accounts: &[&AccountInfo]) -> ProgramResult {
+    pub fn execute(tx_type: ProposalType, accounts: &[&AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
         let multisig_acc: &AccountInfo = account_info_iter.next().ok_or(ProgramError::InvalidAccountData)?;
@@ -128,24 +129,28 @@ impl TransactionState {
         let signers = [Signer::from(&signer_seeds[..])];
 
         match tx_type {
-            0 => { // Base transaction - execute CPI
+            ProposalType::Cpi => { // Base transaction - execute CPI
                 slice_invoke_signed(&cpi_instruction, cpi_accounts_slice, &signers)?;
             },
-            1 => { // AddMember
+            ProposalType::AddMember => { // AddMember
                 // TODO: Implement member addition logic
                 // add_member(cpi_accounts_slice[0])?;
             },
-            2 => { // RemoveMember
+            ProposalType::RemoveMember => { // RemoveMember
                 // TODO: Implement member removal logic
                 // remove_member(cpi_accounts_slice[0])?;
             },
-            3 => { // ChangeThreshold
+            ProposalType::ChangeThreshold => { // ChangeThreshold
                 // TODO: Implement threshold change logic
                 // change_threshold(cpi_accounts_slice[0], cpi_data_slice[0])?;
             },
-            4 => { // ChangeSpendingLimit
+            ProposalType::ChangeSpendingLimit => { // ChangeSpendingLimit
                 // TODO: Implement spending limit change logic
                 // change_spending_limit(cpi_accounts_slice[0], cpi_data_slice[0])?;
+            },
+            ProposalType::StaleTransactionIndex => { // StaleTransactionIndex
+                // TODO: Implement stale transaction index logic
+                // stale_transaction_index(cpi_accounts_slice[0])?;
             },
             _ => {
                 return Err(ProgramError::InvalidInstructionData);
