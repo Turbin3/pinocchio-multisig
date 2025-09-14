@@ -537,7 +537,6 @@ fn test_init_and_update_multisig() {
         vec![0; 6],
     ]
     .concat();
-
     let update_multisig_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
@@ -546,7 +545,6 @@ fn test_init_and_update_multisig() {
         ],
         data: update_multisig_data,
     }];
-
     let result = common::build_and_send_transaction(&mut svm, &fee_payer, update_multisig_instruction);
 
     println!("result: {:?}", result);
@@ -555,7 +553,6 @@ fn test_init_and_update_multisig() {
 
     let multisig_account = svm.get_account(&pda_multisig).unwrap();
     let multisig_data = &multisig_account.data;
-
     let multisig_state: &MultisigState = bytemuck::from_bytes(multisig_data);
 
     assert_eq!(multisig_state.min_threshold, 3);
