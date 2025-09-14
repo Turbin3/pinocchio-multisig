@@ -9,6 +9,7 @@ pub mod update_multisig;
 pub use create_proposal::*;
 pub use create_transaction::*;
 pub use init_multisig::*;
+pub use update_multisig::*;
 
 use pinocchio::program_error::ProgramError;
 
