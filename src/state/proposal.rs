@@ -2,24 +2,28 @@ use crate::helper::account_init::StateDefinition;
 use bytemuck::{Pod, Zeroable};
 use pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey};
 
-#[derive(Pod, Zeroable, Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u8)]
+pub enum ProposalType {
+    Cpi = 0,
+    AddMember = 1,
+    RemoveMember = 2,
+    ChangeThreshold = 3,
+    ChangeSpendingLimit = 4,
+    StaleTransactionIndex = 5,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
 pub struct ProposalState {
     pub proposal_id: u64, // Unique identifier for the proposal
-    pub expiry: u64,      // Adjust size as needed is it needed here?
+    pub expiry: i64,      // Adjust size as needed is it needed here?
     pub created_time: u64,
-    // analysis period
-    // pub active_members: [Pubkey; 10], // Array to hold active members, adjust size as needed
-
-    //VOTE 0 - NOT VOTED
-    //VOTE 1 - FOR
-    //VOTE 2 - AGAINST
-    //VOTE 3 - ABSTAIN
-    pub votes: [u8; 10],
-    // imo slot
-    pub result: u8,
+    pub transaction_index: u64,
+    pub status: u8,
+    pub tx_type: ProposalType,
     pub bump: u8,          // Bump seed for PDA
-    pub _padding: [u8; 4], // padding to reach multiple of 8
+    pub _padding: [u8; 5], // padding to reach multiple of 8
 }
 
 impl StateDefinition for ProposalState {
@@ -71,19 +75,18 @@ impl ProposalState {
     pub fn new(
         &mut self,
         proposal_id: u64,
-        expiry: u64,
-        result: ProposalStatus,
+        expiry: i64,
+        status: ProposalStatus,
         bump: u8,
-        // active_members: [Pubkey; 10],
         votes: [u8; 10],
         created_time: u64,
     ) {
         self.proposal_id = proposal_id;
         self.expiry = expiry;
         self.created_time = created_time;
-        // self.active_members = active_members;
-        self.votes = votes;
-        self.result = result as u8;
+        self.transaction_index = self.transaction_index;
+        self.status = status as u8;
         self.bump = bump;
+        self.tx_type = self.tx_type;
     }
 }
