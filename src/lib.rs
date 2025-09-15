@@ -35,9 +35,6 @@ pub fn process_instruction(
         MultisigInstructions::CreateTransaction => {
             instructions::process_create_transaction(accounts, data)?
         }
-        MultisigInstructions::UpdateMultisig => {
-            instructions::process_update_multisig(accounts, data)?
-        }
         MultisigInstructions::CreateProposal => {
             instructions::process_create_proposal_instruction(accounts, data)?
         }
