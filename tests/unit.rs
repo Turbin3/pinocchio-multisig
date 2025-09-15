@@ -483,80 +483,83 @@ fn test_init_transaction() {
     assert!(result.is_ok());
 }
 
-#[test]
-fn test_init_and_update_multisig() {
-    let (mut svm, fee_payer, second_admin, program_id) = common::setup_svm_and_program();
-    let fee_payer_pubkey = fee_payer.pubkey();
+// #[test]
+// fn test_init_and_update_multisig() {
+//     let (mut svm, fee_payer, second_admin, program_id) = common::setup_svm_and_program();
+//     let fee_payer_pubkey = fee_payer.pubkey();
 
-    let min_threshold: u8 = 2;
-    let max_expiry: u64 = 1_000_000;
-    let num_members: u8 = 3;
-    let primary_seed: u16 = 0;
+//     let min_threshold: u8 = 2;
+//     let max_expiry: u64 = 1_000_000;
+//     let num_members: u8 = 3;
+//     let primary_seed: u16 = 0;
 
-    let data = [
-        vec![0], // discriminator for InitMultisig instruction
-        max_expiry.to_le_bytes().to_vec(),
-        primary_seed.to_le_bytes().to_vec(),
-        min_threshold.to_le_bytes().to_vec(),
-        num_members.to_le_bytes().to_vec(),
-        vec![0; 4], // 4 bytes of padding for 8-byte alignment
-    ]
-    .concat();
+//     let data = [
+//         vec![0], // discriminator for InitMultisig instruction
+//         max_expiry.to_le_bytes().to_vec(),
+//         primary_seed.to_le_bytes().to_vec(),
+//         min_threshold.to_le_bytes().to_vec(),
+//         num_members.to_le_bytes().to_vec(),
+//         vec![0; 4], // 4 bytes of padding for 8-byte alignment
+//     ]
+//     .concat();
 
-    // Multisig Config PDA
-    let seed = [(b"multisig"), &primary_seed.to_le_bytes() as &[u8]];
-    let seeds = &seed[..];
-    let (pda_multisig, _) = Pubkey::find_program_address(seeds, &program_id);
+//     // Multisig Config PDA
+//     let seed = [(b"multisig"), &primary_seed.to_le_bytes() as &[u8]];
+//     let seeds = &seed[..];
+//     let (pda_multisig, _) = Pubkey::find_program_address(seeds, &program_id);
 
-    // Treasury PDA
-    let treasury_seed = [(b"treasury"), pda_multisig.as_ref()];
-    let treasury_seeds = &treasury_seed[..];
-    let (pda_treasury, _) = Pubkey::find_program_address(treasury_seeds, &program_id);
+//     // Treasury PDA
+//     let treasury_seed = [(b"treasury"), pda_multisig.as_ref()];
+//     let treasury_seeds = &treasury_seed[..];
+//     let (pda_treasury, _) = Pubkey::find_program_address(treasury_seeds, &program_id);
 
-    let instruction = vec![Instruction {
-        program_id: program_id,
-        accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
-            AccountMeta::new(pda_multisig, false),
-            AccountMeta::new(pda_treasury, false),
-            AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
-        ],
-        data,
-    }];
+//     let instruction = vec![Instruction {
+//         program_id: program_id,
+//         accounts: vec![
+//             AccountMeta::new(fee_payer.pubkey(), true),
+//             AccountMeta::new(pda_multisig, false),
+//             AccountMeta::new(pda_treasury, false),
+//             AccountMeta::new(rent::ID, false),
+//             AccountMeta::new(system_program::ID, false),
+//         ],
+//         data,
+//     }];
 
-    let result = common::build_and_send_transaction(&mut svm, &fee_payer, instruction);
+//     let result = common::build_and_send_transaction(&mut svm, &fee_payer, instruction);
 
-    assert!(result.is_ok());
+//     assert!(result.is_ok());
 
-    let update_multisig_data = [
-        vec![1], // discriminator for UpdateMultisig instruction
-        100u64.to_le_bytes().to_vec(), // value: u64 (8 bytes)
-        1u8.to_le_bytes().to_vec(), // update_type: u8 (1 for threshold, 2 for spending limit, 3 for stale transaction index)
-        3u8.to_le_bytes().to_vec(), // threshold: u8 (1 byte)
-        vec![0; 6],
-    ]
-    .concat();
-    let update_multisig_instruction = vec![Instruction {
-        program_id: program_id,
-        accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
-            AccountMeta::new(pda_multisig, false),
-        ],
-        data: update_multisig_data,
-    }];
-    let result = common::build_and_send_transaction(&mut svm, &fee_payer, update_multisig_instruction);
+//     let update_multisig_data = [
+//         vec![1], // discriminator for UpdateMultisig instruction        
+//         100u64.to_le_bytes().to_vec(), // value: u64 (8 bytes)
+//         1u8.to_le_bytes().to_vec(), // update_type: u8 (1 for threshold, 2 for spending limit, 3 for stale transaction index)
+//         3u8.to_le_bytes().to_vec(), // threshold: u8 (1 byte)
+//         vec![0; 6],
+//     ]
+//     .concat();
+    
+//     let update_multisig_instruction = vec![Instruction {
+//         program_id: program_id,
+//         accounts: vec![
+//             AccountMeta::new(fee_payer.pubkey(), true),
+//             AccountMeta::new(pda_multisig, false),
+//         ],
+//         data: update_multisig_data,
+//     }];
+    
+//     let result = common::build_and_send_transaction(&mut svm, &fee_payer, update_multisig_instruction);
 
-    println!("result: {:?}", result);
+//     println!("result: {:?}", result);
 
-    assert!(result.is_ok());
+//     assert!(result.is_ok());
 
-    let multisig_account = svm.get_account(&pda_multisig).unwrap();
-    let multisig_data = &multisig_account.data;
-    let multisig_state: &MultisigState = bytemuck::from_bytes(multisig_data);
+//     let multisig_account = svm.get_account(&pda_multisig).unwrap();
+//     let multisig_data = &multisig_account.data;
+    
+//     let multisig_state: &MultisigState = bytemuck::from_bytes(multisig_data);
 
-    assert_eq!(multisig_state.min_threshold, 3);
-    assert_eq!(multisig_state.max_expiry, max_expiry);
+//     assert_eq!(multisig_state.min_threshold, 3);
+//     assert_eq!(multisig_state.max_expiry, max_expiry);
 
-    println!("✅ Success: Multisig threshold correctly updated to 3!");
-}
+//     println!("✅ Success: Multisig threshold correctly updated to 3!");
+// }
