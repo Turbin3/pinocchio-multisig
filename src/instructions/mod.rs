@@ -1,7 +1,9 @@
+pub mod add_member;
 pub mod create_proposal;
 pub mod create_transaction;
 pub mod init_multisig;
-pub mod update_multisig;
+pub mod remove_member;
+pub mod update_members;
 
 pub use create_proposal::*;
 pub use create_transaction::*;
@@ -14,6 +16,7 @@ pub enum MultisigInstructions {
     //update expiry
     //update threshold
     //update members
+    UpdateMultisig = 1, // Glacier + SOLDADDY + Zubayr + Yunohu
     CreateProposal = 2, // Nishant + Umang
     Vote = 3,           // Shrinath + Mohammed + shradesh
     // will close if expiry achieved & votes < threshold || execute if votes >= threshold
@@ -28,6 +31,7 @@ impl TryFrom<&u8> for MultisigInstructions {
     fn try_from(value: &u8) -> Result<Self, Self::Error> {
         match *value {
             0 => Ok(MultisigInstructions::InitMultisig),
+            1 => Ok(MultisigInstructions::UpdateMultisig),
             2 => Ok(MultisigInstructions::CreateProposal),
             3 => Ok(MultisigInstructions::Vote),
             4 => Ok(MultisigInstructions::CloseProposal),
