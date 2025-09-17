@@ -7,8 +7,7 @@ use crate::ID;
 pub struct MemberState {
     pub pubkey: Pubkey,
     pub id: u8,
-    pub status: u8, 
-
+    pub status: u8,
 }
 
 impl MemberState {

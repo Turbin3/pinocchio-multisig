@@ -19,53 +19,70 @@ pub fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
 
     let multisig_state = multisig::MultisigState::from_account_info(multisig_account)?;
 
-    // Check if we have an admin for multisig or not
+    // Admin check if present
     if multisig_state.admin != Pubkey::default() {
-        //If we have an admin then check if it is the real admin or not
         if !admin_account.is_signer() || admin_account.key() != &multisig_state.admin {
             log!("unauthorized admin: {}", admin_account.key());
             return Err(ProgramError::MissingRequiredSignature);
         }
     }
 
-    // Target member pubkey extraction
+    // Member to remove pubkey
     let mut pk_bytes = [0u8; 32];
     pk_bytes.copy_from_slice(&data[..32]);
     let member_to_remove = Pubkey::from(pk_bytes);
 
-    // Locate member in dynamic member region, clear/delete if found
+    // Load members
     let (_header, member_data) = unsafe {
         multisig_account
             .borrow_mut_data_unchecked()
             .split_at_mut_unchecked(multisig::MultisigState::LEN)
     };
-    let mut found_idx: Option<usize> = None;
+    let num_members = multisig_state.num_members as usize;
 
+    // Find and remove member (linear scan)
+    let mut found_idx: Option<(usize, u8)> = None; // (index, status)
     for (idx, m) in member_data.chunks_exact(member::MemberState::LEN).enumerate() {
-        let existing = member::MemberState::from_bytes(m)?;
-        if existing.pubkey == member_to_remove && existing.status != 0 {
-            found_idx = Some(idx);
+        let member = member::MemberState::from_bytes(m)?;
+        if member.pubkey == member_to_remove {
+            found_idx = Some((idx, member.status));
             break;
         }
     }
+    let (idx, status) = found_idx.ok_or(ProgramError::InvalidInstructionData)?;
 
-    let idx = found_idx.ok_or(ProgramError::InvalidInstructionData)?;
+    // Shift subsequent members left
+    for i in idx..num_members - 1 {
+        let dst_offset = i * member::MemberState::LEN;
+        let src_offset = (i + 1) * member::MemberState::LEN;
 
-    let offset = idx * member::MemberState::LEN;
-    let slot = &mut member_data[offset..offset + member::MemberState::LEN];
+        let (left, right) = member_data.split_at_mut(src_offset);
+        let src_slice = &right[..member::MemberState::LEN];
+        let dst_slice = &mut left[dst_offset..dst_offset + member::MemberState::LEN];
+        dst_slice.copy_from_slice(src_slice);
+    }
 
-    // Load, mutate, re-serialize
-    let mut member = member::MemberState::from_bytes(slot)?;
-    member.status = 0;
-    member.pubkey = Pubkey::default();
-    slot.copy_from_slice(&member.to_bytes()?);
+    // Zero out the last slot (now orphaned)
+    let last_offset = (num_members - 1) * member::MemberState::LEN;
+    member_data[last_offset..last_offset + member::MemberState::LEN].fill(0);
 
-    // Decrement count
+    // Resize account to shrink by one member
+    let old_size = multisig_account.data_len();
+    let new_size = old_size - member::MemberState::LEN;
+    multisig_account.resize(new_size)?;
+
+    // Update counters
     multisig_state.num_members = multisig_state
         .num_members
         .checked_sub(1)
         .ok_or(ProgramError::ArithmeticOverflow)?;
+    if status == 1 {
+        multisig_state.admin_counter = multisig_state
+            .admin_counter
+            .checked_sub(1)
+            .ok_or(ProgramError::ArithmeticOverflow)?;
+    }
 
-    log!("Removed member: {} at index {}", &member_to_remove, idx);
+    log!("Removed member: {} (was admin? {}) at index {}", &member_to_remove, status == 1, idx);
     Ok(())
 }
