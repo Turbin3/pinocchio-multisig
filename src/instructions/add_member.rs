@@ -83,7 +83,6 @@ pub(crate) fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult
         for i in (shift_start..shift_end).rev() {
             new_member_data[i + MemberState::LEN] = new_member_data[i];
         }
-
         // Insert the new admin at admin_counter position
         let insert_start = insert_pos * MemberState::LEN;
         let insert_end = insert_start + MemberState::LEN;

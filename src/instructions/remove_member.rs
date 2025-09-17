@@ -41,7 +41,6 @@ pub(crate) fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramRes
         }
     }
     let idx = found_idx.ok_or(ProgramError::InvalidInstructionData)?;
-
     // Determine if it's an admin based on position
     let is_admin = idx < multisig_state.admin_counter as usize;
 
@@ -60,7 +59,6 @@ pub(crate) fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramRes
                 member_data[member2_start + i] = temp;
             }
         }
-
         // Left shift all normal members (after admin section)
         let admin_section_end = multisig_state.admin_counter as usize * MemberState::LEN;
         let normal_members_start = admin_section_end;
@@ -91,7 +89,6 @@ pub(crate) fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramRes
                 member_data[member2_start + i] = temp;
             }
         }
-
         // Zero out the last slot
         let last_offset = (multisig_state.num_members as usize - 1) * MemberState::LEN;
         member_data[last_offset..last_offset + MemberState::LEN].fill(0);
