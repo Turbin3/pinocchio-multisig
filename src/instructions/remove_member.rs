@@ -9,7 +9,6 @@ use crate::helper::account_init::StateDefinition;
 
 pub(crate) fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     let [payer, multisig_account, system_program, _remaining @ ..] = accounts else {
-
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
