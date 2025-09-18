@@ -11,7 +11,7 @@ use crate::instructions::init_multisig::InitMultisigIxData;
 pub struct MultisigState {
     pub seed: u64,
     /// Admin spending limit
-    pub admin_spending_limit: u64,
+    pub spending_limit: u64,
     /// Maximum expiry time for proposals
     pub max_expiry: u64,
     /// The index of the last transaction executed
@@ -19,19 +19,17 @@ pub struct MultisigState {
     // Last stale transaction index. All transactions up until this index are stale.
     pub stale_transaction_index: u64,
     pub primary_seed: u16,
-    /// Admin account for the multisig optional
-    pub admin: Pubkey,    
     /// Treasury account for the multisig, optional
-    pub treasury: Pubkey,      
+    pub treasury: Pubkey,
     /// Bump seed for the treasury PDA
-    pub treasury_bump: u8,    
-    /// Bump seed for the multisig PDA 
-    pub bump: u8,             
+    pub treasury_bump: u8,
+    /// Bump seed for the multisig PDA
+    pub bump: u8,
     /// Minimum number of signers required to execute a proposal
-    pub min_threshold: u8,    
+    pub min_threshold: u8,
     pub num_members: u8,
-    pub members_counter: u8,
     pub admin_counter: u8,
+    pub _padding: [u8; 1],
 }
 
 impl StateDefinition for MultisigState {
@@ -60,8 +58,7 @@ impl MultisigState {
         multisig_bump: u8,
         ix_data: &InitMultisigIxData,
     ) {
-        self.admin = Pubkey::default();
-        self.admin_spending_limit = 0;
+        self.spending_limit = 0;
         self.treasury = *treasury;
         self.treasury_bump = treasury_bump;
         self.bump = multisig_bump;
@@ -69,10 +66,10 @@ impl MultisigState {
         self.max_expiry = ix_data.max_expiry;
         self.transaction_index = 0;
         self.stale_transaction_index = 0;
-        self.num_members = ix_data.num_members;
-        self.members_counter = self.num_members;
+        self.num_members = 0;
         self.admin_counter = 0;
         self.primary_seed = ix_data.primary_seed;
+        self._padding = [0; 1];
     }
 
     pub fn update_threshold(&mut self, threshold: u8) {
@@ -80,9 +77,9 @@ impl MultisigState {
     }
 
     pub fn update_spending_limit(&mut self, spending_limit: u64) {
-        self.admin_spending_limit = spending_limit;
+        self.spending_limit = spending_limit;
     }
-    
+
     pub fn update_stale_transaction_index(&mut self, stale_transaction_index: u64) {
         self.stale_transaction_index = stale_transaction_index;
     }

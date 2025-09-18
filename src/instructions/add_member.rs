@@ -5,8 +5,9 @@ use pinocchio::{
     sysvars::rent::Rent,
     ProgramResult,
 };
-use crate::state::{member::MemberState, multisig::MultisigState};
+use crate::state::{member::{MemberState, MemberRole}, multisig::MultisigState};
 use crate::helper::account_init::StateDefinition;
+use pinocchio_system::instructions::Transfer;
 
 pub(crate) fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     let [payer, multisig_account, rent_acc, _remaining @ ..] = accounts else {
@@ -45,20 +46,26 @@ pub(crate) fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult
     };
 
     // Find insert position: after last admin (if adding admin), or at end
-    let insert_pos = if role == 1 { 
-        multisig_state.admin_counter as usize 
-    } else { 
-        multisig_state.num_members as usize 
+    let insert_pos = if role == MemberRole::Admin as u8 {
+        multisig_state.admin_counter as usize
+    } else {
+        multisig_state.num_members as usize
     };
 
     // Resize account to add new member
     let new_size = multisig_account.data_len() + MemberState::LEN;
     let rent_diff = rent.minimum_balance(new_size) - multisig_account.lamports();
-    multisig_account.resize(new_size)?;
-    unsafe {
-        *payer.borrow_mut_lamports_unchecked() -= rent_diff;
-        *multisig_account.borrow_mut_lamports_unchecked() += rent_diff;
+
+    if rent_diff > 0 {
+        Transfer {
+            from: payer,
+            to: multisig_account,
+            lamports: rent_diff,
+        }
+        .invoke()?;
     }
+
+    multisig_account.resize(new_size)?;
 
     // Get updated member data after resize
     let (_, new_member_data) = unsafe {
@@ -67,16 +74,16 @@ pub(crate) fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult
             .split_at_mut_unchecked(MultisigState::LEN)
     };
 
-    if role == 1 {
+    if role == MemberRole::Admin as u8 {
         // Admin: insert at admin_counter position and shift all normal members right
         let shift_start = insert_pos * MemberState::LEN;
         let shift_end = multisig_state.num_members as usize * MemberState::LEN;
-        
+
         // Shift all normal members right to make space for new admin
         for i in (shift_start..shift_end).rev() {
             new_member_data[i + MemberState::LEN] = new_member_data[i];
         }
-        
+
         // Insert the new admin at admin_counter position
         let insert_start = insert_pos * MemberState::LEN;
         let insert_end = insert_start + MemberState::LEN;
@@ -90,8 +97,16 @@ pub(crate) fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult
 
     // Update counters
     multisig_state.num_members = multisig_state.num_members.checked_add(1).ok_or(ProgramError::ArithmeticOverflow)?;
-    if role == 1 {
+    if role == MemberRole::Admin as u8 {
         multisig_state.admin_counter = multisig_state.admin_counter.checked_add(1).ok_or(ProgramError::ArithmeticOverflow)?;
     }
+
+    let header_len = MultisigState::LEN;
+
+    // The expression inside the block now becomes the value of `header_data`
+    let header_data = unsafe { &mut multisig_account.borrow_mut_data_unchecked()[..header_len] };
+
+    // Pass a reference to `multisig_state`
+    header_data.copy_from_slice(bytemuck::bytes_of(multisig_state));
     Ok(())
 }

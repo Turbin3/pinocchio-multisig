@@ -1,9 +1,18 @@
 use pinocchio::{account_info::{AccountInfo, Ref}, program_error::ProgramError, pubkey::Pubkey};
 use core::mem::size_of;
+use bytemuck::{Pod, Zeroable};
 
 use crate::ID;
 
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum MemberRole {
+    Admin = 1,
+    Member = 0,
+}
+
 #[repr(C)]
+#[derive(Pod, Zeroable, Clone, Copy, Debug, PartialEq)]
 pub struct MemberState {
     pub pubkey: Pubkey,
 }
@@ -26,15 +35,18 @@ impl MemberState {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ProgramError> {
-        let creator_pubkey = unsafe { *(bytes.as_ptr() as *const [u8; 32]) };
+        if bytes.len() < 32 {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let pubkey_bytes = unsafe { *(bytes.as_ptr() as *const [u8; 32]) };
         Ok(MemberState {
-            pubkey: creator_pubkey,
+            pubkey: Pubkey::from(pubkey_bytes),
         })
     }
 
     pub fn to_bytes(&self) -> Result<[u8; Self::LEN], ProgramError> {
         let mut bytes = [0u8; Self::LEN];
-        bytes[0..32].copy_from_slice(&self.pubkey);
+        bytes.copy_from_slice(&self.pubkey.as_ref());
         Ok(bytes)
     }
 

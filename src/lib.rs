@@ -9,9 +9,9 @@ use pinocchio::{
     ProgramResult,
 };
 
-mod helper;
 mod instructions;
 pub mod state;
+pub mod helper;
 
 use instructions::*;
 

@@ -8,7 +8,7 @@ use crate::state::{member::MemberState, multisig::MultisigState};
 use crate::helper::account_init::StateDefinition;
 
 pub(crate) fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [payer, multisig_account, _remaining @ ..] = accounts else {
+    let [payer, multisig_account, system_program, _remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -40,18 +40,18 @@ pub(crate) fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramRes
         }
     }
     let idx = found_idx.ok_or(ProgramError::InvalidInstructionData)?;
-    
+
     // Determine if it's an admin based on position
     let is_admin = idx < multisig_state.admin_counter as usize;
 
     if is_admin {
         // Admin: swap with last admin, then left shift all normal members
         let last_admin_idx = multisig_state.admin_counter as usize - 1;
-        
+
         if idx != last_admin_idx {
             let member1_start = idx * MemberState::LEN;
             let member2_start = last_admin_idx * MemberState::LEN;
-            
+
             // Swap the two members
             for i in 0..MemberState::LEN {
                 let temp = member_data[member1_start + i];
@@ -59,30 +59,30 @@ pub(crate) fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramRes
                 member_data[member2_start + i] = temp;
             }
         }
-        
+
         // Left shift all normal members (after admin section)
         let admin_section_end = multisig_state.admin_counter as usize * MemberState::LEN;
         let normal_members_start = admin_section_end;
         let normal_members_end = multisig_state.num_members as usize * MemberState::LEN;
-        
+
         for i in normal_members_start..normal_members_end - MemberState::LEN {
             member_data[i] = member_data[i + MemberState::LEN];
         }
-        
+
         // Zero out the last slot
         let last_offset = (multisig_state.num_members as usize - 1) * MemberState::LEN;
         member_data[last_offset..last_offset + MemberState::LEN].fill(0);
-        
+
         // Update counters
         multisig_state.admin_counter = multisig_state.admin_counter.checked_sub(1).ok_or(ProgramError::ArithmeticOverflow)?;
     } else {
         // Normal member: swap with last member
         let last_member_idx = multisig_state.num_members as usize - 1;
-        
+
         if idx != last_member_idx {
             let member1_start = idx * MemberState::LEN;
             let member2_start = last_member_idx * MemberState::LEN;
-            
+
             // Swap the two members
             for i in 0..MemberState::LEN {
                 let temp = member_data[member1_start + i];
@@ -90,7 +90,7 @@ pub(crate) fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramRes
                 member_data[member2_start + i] = temp;
             }
         }
-        
+
         // Zero out the last slot
         let last_offset = (multisig_state.num_members as usize - 1) * MemberState::LEN;
         member_data[last_offset..last_offset + MemberState::LEN].fill(0);

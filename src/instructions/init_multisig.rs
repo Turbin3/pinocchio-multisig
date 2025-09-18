@@ -7,7 +7,7 @@ use pinocchio::{
     sysvars::rent::Rent,
 };
 
-use crate::state::MultisigState;
+use crate::state::{MultisigState, MemberRole};
 use crate::helper::{
     utils::{load_ix_data, DataLen},
     account_checks::check_signer,
@@ -20,7 +20,8 @@ pub struct InitMultisigIxData {
     pub max_expiry: u64,      // 8 bytes
     pub primary_seed: u16,    // 2 bytes
     pub min_threshold: u8,    // 1 byte
-    pub num_members: u8,      // 1 byte    
+    pub num_members: u8,      // 1 byte
+    pub num_admins: u8,       // 1 byte
 }
 
 impl DataLen for InitMultisigIxData {
@@ -28,7 +29,7 @@ impl DataLen for InitMultisigIxData {
 }
 
 pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [creator, multisig, treasury, rent, _remaining @ ..] = accounts else {
+    let [creator, multisig, treasury, rent, system_program, remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -38,23 +39,27 @@ pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) 
         return Err(ProgramError::AccountAlreadyInitialized);
     }
 
-    let rent = Rent::from_account_info(rent)?;
+    let rent_account = Rent::from_account_info(rent)?;
 
     let ix_data = unsafe { load_ix_data::<InitMultisigIxData>(&data)? };
+
+    if ix_data.num_members < ix_data.num_admins {
+        return Err(ProgramError::InvalidAccountData);
+    }
 
     // Multisig Config PDA
     let seeds = &[MultisigState::SEED.as_bytes(), &ix_data.primary_seed.to_le_bytes()];
     let (pda_multisig, multisig_bump) = pubkey::find_program_address(seeds, &crate::ID);
-    
+
     if pda_multisig.ne(multisig.key()) {
         return Err(ProgramError::InvalidAccountOwner);
     }
-   
+
     // Treasury PDA
     let treasury_seed = [(b"treasury"), multisig.key().as_slice()];
     let treasury_seeds = &treasury_seed[..];
     let (pda_treasury, treasury_bump) = pubkey::find_program_address(treasury_seeds, &crate::ID);
-    
+
     if pda_treasury.ne(treasury.key()) {
         return Err(ProgramError::InvalidAccountOwner);
     }
@@ -67,7 +72,7 @@ pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) 
         Seed::from(&bump_bytes[..]),
     ];
 
-    create_pda_account::<MultisigState>(&creator, &multisig, &signer_seeds, &rent)?;
+    create_pda_account::<MultisigState>(&creator, &multisig, &signer_seeds, &rent_account)?;
 
     let multisig_account = MultisigState::from_account_info(&multisig)?;
     multisig_account.new(
@@ -76,6 +81,26 @@ pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) 
         multisig_bump,
         ix_data,
     );
+
+    for i in 0..ix_data.num_members as usize {
+        let member = &remaining[i];
+
+        let mut member_data = [0u8; 33];
+
+        member_data[0..32].copy_from_slice(member.key());
+
+        let role = if i < ix_data.num_admins as usize {
+            MemberRole::Admin
+        } else {
+            MemberRole::Member
+        };
+
+        member_data[32] = role as u8;
+
+        let new_accounts = [creator.clone(), multisig.clone(), rent.clone(), system_program.clone()];
+
+        super::add_member::add_member(&new_accounts, &member_data)?;
+    }
 
     if !treasury.data_is_empty() {
         return Err(ProgramError::AccountAlreadyInitialized);
@@ -89,7 +114,7 @@ pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) 
         Seed::from(&treasury_bump_bytes),
     ];
 
-    create_pda_account::<MultisigState>(&creator, &treasury, &treasury_signer_seeds, &rent)?;
+    create_pda_account::<MultisigState>(&creator, &treasury, &treasury_signer_seeds, &rent_account)?;
 
     Ok(())
 }
