@@ -82,25 +82,8 @@ pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) 
         ix_data,
     );
 
-    for i in 0..ix_data.num_members as usize {
-        let member = &remaining[i];
-
-        let mut member_data = [0u8; 33];
-
-        member_data[0..32].copy_from_slice(member.key());
-
-        let role = if i < ix_data.num_admins as usize {
-            MemberRole::Admin
-        } else {
-            MemberRole::Member
-        };
-
-        member_data[32] = role as u8;
-
-        let new_accounts = [creator.clone(), multisig.clone(), rent.clone(), system_program.clone()];
-
-        super::add_member::add_member(&new_accounts, &member_data)?;
-    }
+    // Add all members
+    add_all_members(creator, multisig, &rent_account, multisig_account, remaining, ix_data)?;
 
     if !treasury.data_is_empty() {
         return Err(ProgramError::AccountAlreadyInitialized);
@@ -116,5 +99,57 @@ pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) 
 
     create_pda_account::<MultisigState>(&creator, &treasury, &treasury_signer_seeds, &rent_account)?;
 
+    Ok(())
+}
+
+fn add_all_members(
+    creator: &AccountInfo,
+    multisig: &AccountInfo,
+    rent_account: &Rent,
+    multisig_account: &mut MultisigState,
+    remaining: &[AccountInfo],
+    ix_data: &InitMultisigIxData,
+) -> ProgramResult {
+    if ix_data.num_members > 0 {
+        // Calculate total size needed for all members
+        let total_member_size = ix_data.num_members as usize * crate::state::member::MemberState::LEN;
+        let new_size = multisig.data_len() + total_member_size;
+        let min_balance = rent_account.minimum_balance(new_size);
+        let rent_diff = min_balance.saturating_sub(multisig.lamports());
+
+        if rent_diff > 0 {
+            use pinocchio_system::instructions::Transfer;
+            Transfer {
+                from: creator,
+                to: multisig,
+                lamports: rent_diff,
+            }
+            .invoke()?;
+        }
+
+        multisig.resize(new_size)?;
+
+        // Get member data section
+        let (_, member_data) = unsafe {
+            multisig
+                .borrow_mut_data_unchecked()
+                .split_at_mut_unchecked(MultisigState::LEN)
+        };
+
+        // Add all members in order (admins first, then normal members)
+        for i in 0..ix_data.num_members as usize {
+            let member = &remaining[i];
+            let member_start = i * crate::state::member::MemberState::LEN;
+            let member_end = member_start + crate::state::member::MemberState::LEN;
+            
+            // Copy the pubkey directly
+            member_data[member_start..member_end].copy_from_slice(member.key());
+        }
+
+        // Update counters
+        multisig_account.num_members = ix_data.num_members;
+        multisig_account.admin_counter = ix_data.num_admins;
+    }
+    
     Ok(())
 }
