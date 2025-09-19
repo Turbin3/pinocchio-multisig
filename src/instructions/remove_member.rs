@@ -105,4 +105,4 @@ pub(crate) fn remove_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramRes
     multisig_state.num_members = multisig_state.num_members.checked_sub(1).ok_or(ProgramError::ArithmeticOverflow)?;
 
     Ok(())
-
+}
