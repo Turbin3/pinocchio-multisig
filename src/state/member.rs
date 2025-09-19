@@ -18,7 +18,7 @@ pub struct MemberState {
 }
 
 impl MemberState {
-    pub const LEN: usize = core::mem::size_of::<MemberState>();
+    pub const LEN: usize = 32;
 
     #[inline]
     pub fn from_account_info_unchecked(account_info: &AccountInfo) -> &mut Self {
