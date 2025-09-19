@@ -1,6 +1,10 @@
-use pinocchio::{account_info::{AccountInfo, Ref}, program_error::ProgramError, pubkey::Pubkey};
-use core::mem::size_of;
 use bytemuck::{Pod, Zeroable};
+use core::mem::size_of;
+use pinocchio::{
+    account_info::{AccountInfo, Ref},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
 
 use crate::ID;
 
@@ -49,5 +53,4 @@ impl MemberState {
         bytes.copy_from_slice(&self.pubkey.as_ref());
         Ok(bytes)
     }
-
 }
