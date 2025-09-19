@@ -97,7 +97,7 @@ pub(crate) fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult
     // Update counters
     multisig_state.num_members = multisig_state.num_members.checked_add(1).ok_or(ProgramError::ArithmeticOverflow)?;
 
-  if role == MemberRole::Admin as u8 {
+    if role == MemberRole::Admin as u8 {
         multisig_state.admin_counter = multisig_state.admin_counter.checked_add(1).ok_or(ProgramError::ArithmeticOverflow)?;
     }
 
