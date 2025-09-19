@@ -588,6 +588,8 @@ fn test_create_proposal_non_admin_member() {
     let primary_seed: u16 = 5;
     let num_admins: u8 = 1; // 1 admin
 
+    let admin_member = Keypair::new();
+
     let init_data = [
         vec![0], // discriminator for InitMultisig instruction
         max_expiry.to_le_bytes().to_vec(),
@@ -607,7 +609,7 @@ fn test_create_proposal_non_admin_member() {
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::ID, false),
-            AccountMeta::new(fee_payer.pubkey(), false), // admin member
+            AccountMeta::new(admin_member.pubkey(), false), // admin member
             AccountMeta::new(second_admin.pubkey(), false), // normal member
         ],
         data: init_data,
