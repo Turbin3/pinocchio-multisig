@@ -8,9 +8,10 @@ use solana_sdk::{
     sysvar::rent,
 };
 
-use pinocchio_multisig::state::{MultisigState, MemberState};
+use pinocchio_multisig::state::{MultisigState, MemberState, proposal::{ProposalState, ProposalStatus}};
 use pinocchio_multisig::helper::account_init::StateDefinition;
 use bytemuck::Pod;
+use pinocchio::account_info::AccountInfo;
 
 use solana_sdk::bs58;
 
@@ -125,7 +126,7 @@ fn test_init_multisig_with_members() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),            
+            AccountMeta::new(system_program::ID, false),
             AccountMeta::new(second_admin_pubkey, false),
             AccountMeta::new(third_member.pubkey(), false),
             AccountMeta::new(fourth_member.pubkey(), false),
@@ -416,9 +417,13 @@ fn test_create_proposal() {
     println!("pda_proposal acc : {:?}", pda_proposal);
     println!("proposal_bump: {}", proposal_bump);
 
+    let expiry: u64 = 1_000_000;
+
     let create_proposal_data = [
         vec![2], // discriminator (CreateProposal)
-        proposal_primary_seed.to_le_bytes().to_vec(),
+        expiry.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
+        vec![0; 6], // 6 bytes of padding for 8-byte alignment (total 16 bytes)
     ]
     .concat();
 
@@ -429,6 +434,7 @@ fn test_create_proposal() {
             AccountMeta::new(pda_proposal, false),      // proposal_account (will be created)
             AccountMeta::new_readonly(pda_multisig, false), // multisig_account (readonly)
             AccountMeta::new_readonly(rent::ID, false), // rent sysvar
+            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false), // clock sysvar
             AccountMeta::new_readonly(system_program::ID, false), // system program
         ],
         data: create_proposal_data,
@@ -441,6 +447,31 @@ fn test_create_proposal() {
     println!("create proposal result: {:?}", result);
 
     assert!(result.is_ok());
+
+    // Verify the proposal account was created and has correct data
+    let proposal_account = svm.get_account(&pda_proposal).unwrap();
+    assert!(!proposal_account.data.is_empty());
+
+    // Read proposal state directly from bytes
+    let proposal_data = &proposal_account.data;
+    let proposal_id = u16::from_le_bytes([proposal_data[0], proposal_data[1]]);
+    let expiry = u64::from_le_bytes([
+        proposal_data[2], proposal_data[3], proposal_data[4], proposal_data[5],
+        proposal_data[6], proposal_data[7], proposal_data[8], proposal_data[9]
+    ]);
+    let created_time = u64::from_le_bytes([
+        proposal_data[10], proposal_data[11], proposal_data[12], proposal_data[13],
+        proposal_data[14], proposal_data[15], proposal_data[16], proposal_data[17]
+    ]);
+    let status = proposal_data[18]; // ProposalStatus as u8
+    let bump = proposal_data[19];
+
+    // Verify proposal state fields
+    assert_eq!(proposal_id, proposal_primary_seed);
+    assert_eq!(expiry, expiry);
+    assert_eq!(status, 0); // ProposalStatus::Draft = 0
+
+    println!("✅ Success: Proposal created with correct state data!");
 }
 
 #[test]
@@ -459,7 +490,9 @@ fn test_create_proposal_multisig_not_initialized() {
 
     let create_proposal_data = [
         vec![2], // discriminator (CreateProposal)
-        proposal_primary_seed.to_le_bytes().to_vec(), // primary seed
+        0u64.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
+        vec![0; 6],
     ]
     .concat();
 
@@ -470,6 +503,7 @@ fn test_create_proposal_multisig_not_initialized() {
             AccountMeta::new(pda_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
+            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false), // clock sysvar
             AccountMeta::new_readonly(system_program::ID, false),
         ],
         data: create_proposal_data,
@@ -495,7 +529,9 @@ fn test_create_proposal_account_already_exists() {
 
     let create_proposal_data = [
         vec![2], // discriminator (CreateProposal)
-        proposal_primary_seed.to_le_bytes().to_vec(), // primary seed
+        0u64.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
+        vec![0; 6],
     ]
     .concat();
 
@@ -506,6 +542,7 @@ fn test_create_proposal_account_already_exists() {
             AccountMeta::new(pda_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
+            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
             AccountMeta::new_readonly(system_program::ID, false),
         ],
         data: create_proposal_data,
@@ -534,7 +571,9 @@ fn test_create_proposal_invalid_multisig_owner() {
 
     let create_proposal_data = [
         vec![2], // discriminator (CreateProposal)
-        proposal_primary_seed.to_le_bytes().to_vec(), // primary seed
+        0u64.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
+        vec![0; 6],
     ]
     .concat();
 
@@ -545,6 +584,7 @@ fn test_create_proposal_invalid_multisig_owner() {
             AccountMeta::new(pda_proposal, false),
             AccountMeta::new_readonly(fake_multisig.pubkey(), false), // wrong owner
             AccountMeta::new_readonly(rent::ID, false),
+            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
             AccountMeta::new_readonly(system_program::ID, false),
         ],
         data: create_proposal_data,
@@ -606,6 +646,7 @@ fn test_create_proposal_invalid_instruction_data() {
             AccountMeta::new(pda_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
+            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
             AccountMeta::new_readonly(system_program::ID, false),
         ],
         data: create_proposal_data,
@@ -660,7 +701,9 @@ fn test_create_proposal_wrong_proposal_pda() {
     let proposal_primary_seed: u16 = 0;
     let create_proposal_data = [
         vec![2], // discriminator (CreateProposal)
-        proposal_primary_seed.to_le_bytes().to_vec(), // primary seed
+        0u64.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
+        vec![0; 6],
     ]
     .concat();
 
@@ -671,6 +714,7 @@ fn test_create_proposal_wrong_proposal_pda() {
             AccountMeta::new(wrong_pda_proposal, false), // wrong PDA
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
+            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
             AccountMeta::new_readonly(system_program::ID, false),
         ],
         data: create_proposal_data,
@@ -735,7 +779,9 @@ fn test_create_proposal_non_admin_member() {
 
     let create_proposal_data = [
         vec![2], // discriminator (CreateProposal)
-        proposal_primary_seed.to_le_bytes().to_vec(), // primary seed
+        0u64.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
+        vec![0; 6],
     ]
     .concat();
 
@@ -746,6 +792,7 @@ fn test_create_proposal_non_admin_member() {
             AccountMeta::new(pda_proposal, false),         // proposal account
             AccountMeta::new_readonly(pda_multisig, false), // multisig account
             AccountMeta::new_readonly(rent::ID, false),    // rent sysvar
+            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
             AccountMeta::new_readonly(system_program::ID, false), // system program
         ],
         data: create_proposal_data,
