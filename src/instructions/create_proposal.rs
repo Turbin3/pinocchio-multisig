@@ -20,7 +20,8 @@ use pinocchio::{
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, shank::ShankType)]
-pub struct CreateProposalIxData {
+pub struct CreateProposalIxData {    
+    pub expiry: u64,         // 8 bytes
     pub primary_seed: u16,    // 2 bytes
 }
 
@@ -29,7 +30,7 @@ impl DataLen for CreateProposalIxData {
 }
 
 pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [creator, proposal_account, multisig_account, rent_sysvar_acc, _remaining @ ..] = accounts
+    let [creator, proposal_account, multisig_account, rent_sysvar_acc, clock_sysvar_acc, _remaining @ ..] = accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
@@ -97,8 +98,10 @@ pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]
 
     create_pda_account::<ProposalState>(&creator, &proposal_account, &signer_seeds, &rent_account)?;
 
+    let current_time = Clock::from_account_info(clock_sysvar_acc)?.unix_timestamp as u64;
+
     let proposal = ProposalState::from_account_info(&proposal_account)?;
-    proposal.new(0, 0, ProposalStatus::Draft, proposal_bump, [0; 10], 0);
+    proposal.new(ix_data.primary_seed, ix_data.expiry, ProposalStatus::Draft, proposal_bump, current_time);
 
     Ok(())
 }
