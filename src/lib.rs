@@ -9,9 +9,9 @@ use pinocchio::{
     ProgramResult,
 };
 
-mod instructions;
-pub mod state;
 pub mod helper;
+pub mod instructions;
+pub mod state;
 
 use instructions::*;
 
@@ -38,7 +38,7 @@ pub fn process_instruction(
         MultisigInstructions::CreateProposal => {
             instructions::process_create_proposal_instruction(accounts, data)?
         }
-        //MultisigInstructions::Vote => instructions::process_init_multisig_instruction(accounts, data)?,
+        MultisigInstructions::Vote => instructions::process_vote_instruction(accounts, data)?,
         _ => todo!(),
     }
 

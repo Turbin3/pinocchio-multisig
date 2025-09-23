@@ -8,10 +8,16 @@ use solana_sdk::{
     sysvar::rent,
 };
 
-use pinocchio_multisig::state::{MultisigState, MemberState, proposal::{ProposalState, ProposalStatus}};
-use pinocchio_multisig::helper::account_init::StateDefinition;
 use bytemuck::Pod;
 use pinocchio::account_info::AccountInfo;
+use pinocchio_multisig::{helper::account_init::StateDefinition, instructions::VoteIxData};
+use pinocchio_multisig::{
+    helper::to_bytes,
+    state::{
+        proposal::{ProposalState, ProposalStatus},
+        MemberState, MultisigState,
+    },
+};
 
 use solana_sdk::bs58;
 
@@ -411,7 +417,11 @@ fn test_create_proposal() {
     assert!(multisig_result.is_ok(), "Failed to create multisig");
 
     let proposal_primary_seed: u16 = 1;
-    let proposal_seed = [b"proposal".as_ref(), pda_multisig.as_ref(), &proposal_primary_seed.to_le_bytes()];
+    let proposal_seed = [
+        b"proposal".as_ref(),
+        pda_multisig.as_ref(),
+        &proposal_primary_seed.to_le_bytes(),
+    ];
     let (pda_proposal, proposal_bump) = Pubkey::find_program_address(&proposal_seed, &program_id);
 
     println!("pda_proposal acc : {:?}", pda_proposal);
@@ -420,8 +430,8 @@ fn test_create_proposal() {
     let expiry: u64 = 1_000_000;
 
     let create_proposal_data = [
-        vec![2], // discriminator (CreateProposal)
-        expiry.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        vec![2],                                      // discriminator (CreateProposal)
+        expiry.to_le_bytes().to_vec(),                // expiry: u64 (8 bytes)
         proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
         vec![0; 6], // 6 bytes of padding for 8-byte alignment (total 16 bytes)
     ]
@@ -456,12 +466,24 @@ fn test_create_proposal() {
     let proposal_data = &proposal_account.data;
     let proposal_id = u16::from_le_bytes([proposal_data[0], proposal_data[1]]);
     let expiry = u64::from_le_bytes([
-        proposal_data[2], proposal_data[3], proposal_data[4], proposal_data[5],
-        proposal_data[6], proposal_data[7], proposal_data[8], proposal_data[9]
+        proposal_data[2],
+        proposal_data[3],
+        proposal_data[4],
+        proposal_data[5],
+        proposal_data[6],
+        proposal_data[7],
+        proposal_data[8],
+        proposal_data[9],
     ]);
     let created_time = u64::from_le_bytes([
-        proposal_data[10], proposal_data[11], proposal_data[12], proposal_data[13],
-        proposal_data[14], proposal_data[15], proposal_data[16], proposal_data[17]
+        proposal_data[10],
+        proposal_data[11],
+        proposal_data[12],
+        proposal_data[13],
+        proposal_data[14],
+        proposal_data[15],
+        proposal_data[16],
+        proposal_data[17],
     ]);
     let status = proposal_data[18]; // ProposalStatus as u8
     let bump = proposal_data[19];
@@ -485,12 +507,16 @@ fn test_create_proposal_multisig_not_initialized() {
 
     // Use a primary seed for the proposal
     let proposal_primary_seed: u16 = 0;
-    let proposal_seed = [b"proposal".as_ref(), pda_multisig.as_ref(), &proposal_primary_seed.to_le_bytes()];
+    let proposal_seed = [
+        b"proposal".as_ref(),
+        pda_multisig.as_ref(),
+        &proposal_primary_seed.to_le_bytes(),
+    ];
     let (pda_proposal, _proposal_bump) = Pubkey::find_program_address(&proposal_seed, &program_id);
 
     let create_proposal_data = [
-        vec![2], // discriminator (CreateProposal)
-        0u64.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        vec![2],                                      // discriminator (CreateProposal)
+        0u64.to_le_bytes().to_vec(),                  // expiry: u64 (8 bytes)
         proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
         vec![0; 6],
     ]
@@ -509,8 +535,12 @@ fn test_create_proposal_multisig_not_initialized() {
         data: create_proposal_data,
     }];
 
-    let result = common::build_and_send_transaction(&mut svm, &fee_payer, create_proposal_instruction);
-    println!("create proposal with uninitialized multisig result: {:?}", result);
+    let result =
+        common::build_and_send_transaction(&mut svm, &fee_payer, create_proposal_instruction);
+    println!(
+        "create proposal with uninitialized multisig result: {:?}",
+        result
+    );
     assert!(result.is_err(), "Expected error for uninitialized multisig");
 }
 
@@ -524,12 +554,16 @@ fn test_create_proposal_account_already_exists() {
 
     // Use the same proposal primary seed as the first test
     let proposal_primary_seed: u16 = 1;
-    let proposal_seed = [b"proposal".as_ref(), pda_multisig.as_ref(), &proposal_primary_seed.to_le_bytes()];
+    let proposal_seed = [
+        b"proposal".as_ref(),
+        pda_multisig.as_ref(),
+        &proposal_primary_seed.to_le_bytes(),
+    ];
     let (pda_proposal, _proposal_bump) = Pubkey::find_program_address(&proposal_seed, &program_id);
 
     let create_proposal_data = [
-        vec![2], // discriminator (CreateProposal)
-        0u64.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        vec![2],                                      // discriminator (CreateProposal)
+        0u64.to_le_bytes().to_vec(),                  // expiry: u64 (8 bytes)
         proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
         vec![0; 6],
     ]
@@ -549,9 +583,13 @@ fn test_create_proposal_account_already_exists() {
     }];
 
     // Try to create the same proposal that already exists from the first test
-    let result = common::build_and_send_transaction(&mut svm, &fee_payer, create_proposal_instruction);
+    let result =
+        common::build_and_send_transaction(&mut svm, &fee_payer, create_proposal_instruction);
     println!("create proposal with existing account result: {:?}", result);
-    assert!(result.is_err(), "Expected error for existing proposal account");
+    assert!(
+        result.is_err(),
+        "Expected error for existing proposal account"
+    );
 }
 
 #[test]
@@ -566,12 +604,16 @@ fn test_create_proposal_invalid_multisig_owner() {
     // Use a primary seed for the proposal
     let proposal_primary_seed: u16 = 0;
     let binding = fake_multisig.pubkey();
-    let proposal_seed = [b"proposal".as_ref(), binding.as_ref(), &proposal_primary_seed.to_le_bytes()];
+    let proposal_seed = [
+        b"proposal".as_ref(),
+        binding.as_ref(),
+        &proposal_primary_seed.to_le_bytes(),
+    ];
     let (pda_proposal, _proposal_bump) = Pubkey::find_program_address(&proposal_seed, &program_id);
 
     let create_proposal_data = [
-        vec![2], // discriminator (CreateProposal)
-        0u64.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        vec![2],                                      // discriminator (CreateProposal)
+        0u64.to_le_bytes().to_vec(),                  // expiry: u64 (8 bytes)
         proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
         vec![0; 6],
     ]
@@ -590,8 +632,12 @@ fn test_create_proposal_invalid_multisig_owner() {
         data: create_proposal_data,
     }];
 
-    let result = common::build_and_send_transaction(&mut svm, &fee_payer, create_proposal_instruction);
-    println!("create proposal with invalid multisig owner result: {:?}", result);
+    let result =
+        common::build_and_send_transaction(&mut svm, &fee_payer, create_proposal_instruction);
+    println!(
+        "create proposal with invalid multisig owner result: {:?}",
+        result
+    );
     assert!(result.is_err(), "Expected error for invalid multisig owner");
 }
 
@@ -614,7 +660,8 @@ fn test_create_proposal_invalid_instruction_data() {
         0u8.to_le_bytes().to_vec(),
         0u8.to_le_bytes().to_vec(),
         vec![0; 3],
-    ].concat();
+    ]
+    .concat();
 
     let init_instruction = vec![Instruction {
         program_id,
@@ -633,7 +680,11 @@ fn test_create_proposal_invalid_instruction_data() {
 
     // Use a primary seed for the proposal
     let proposal_primary_seed: u16 = 0;
-    let proposal_seed = [b"proposal".as_ref(), pda_multisig.as_ref(), &proposal_primary_seed.to_le_bytes()];
+    let proposal_seed = [
+        b"proposal".as_ref(),
+        pda_multisig.as_ref(),
+        &proposal_primary_seed.to_le_bytes(),
+    ];
     let (pda_proposal, _proposal_bump) = Pubkey::find_program_address(&proposal_seed, &program_id);
 
     // Test with malformed data (too short - only discriminator, missing primary seed)
@@ -652,7 +703,8 @@ fn test_create_proposal_invalid_instruction_data() {
         data: create_proposal_data,
     }];
 
-    let result = common::build_and_send_transaction(&mut svm, &fee_payer, create_proposal_instruction);
+    let result =
+        common::build_and_send_transaction(&mut svm, &fee_payer, create_proposal_instruction);
     println!("create proposal with empty data result: {:?}", result);
     assert!(result.is_err(), "Expected error for empty instruction data");
 }
@@ -676,7 +728,8 @@ fn test_create_proposal_wrong_proposal_pda() {
         0u8.to_le_bytes().to_vec(),
         0u8.to_le_bytes().to_vec(),
         vec![0; 3],
-    ].concat();
+    ]
+    .concat();
 
     let init_instruction = vec![Instruction {
         program_id,
@@ -695,13 +748,14 @@ fn test_create_proposal_wrong_proposal_pda() {
 
     // Use wrong seeds for proposal PDA (missing primary seed)
     let wrong_proposal_seed = [b"proposal".as_ref(), pda_multisig.as_ref()]; // Missing primary seed
-    let (wrong_pda_proposal, _wrong_proposal_bump) = Pubkey::find_program_address(&wrong_proposal_seed, &program_id);
+    let (wrong_pda_proposal, _wrong_proposal_bump) =
+        Pubkey::find_program_address(&wrong_proposal_seed, &program_id);
 
     // Use correct instruction data with primary seed
     let proposal_primary_seed: u16 = 0;
     let create_proposal_data = [
-        vec![2], // discriminator (CreateProposal)
-        0u64.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        vec![2],                                      // discriminator (CreateProposal)
+        0u64.to_le_bytes().to_vec(),                  // expiry: u64 (8 bytes)
         proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
         vec![0; 6],
     ]
@@ -720,7 +774,8 @@ fn test_create_proposal_wrong_proposal_pda() {
         data: create_proposal_data,
     }];
 
-    let result = common::build_and_send_transaction(&mut svm, &fee_payer, create_proposal_instruction);
+    let result =
+        common::build_and_send_transaction(&mut svm, &fee_payer, create_proposal_instruction);
     println!("create proposal with wrong PDA result: {:?}", result);
     assert!(result.is_err(), "Expected error for wrong proposal PDA");
 }
@@ -774,12 +829,16 @@ fn test_create_proposal_non_admin_member() {
 
     // Try to create proposal with the normal member (second_admin) - should fail
     let proposal_primary_seed: u16 = 0;
-    let proposal_seed = [b"proposal".as_ref(), pda_multisig.as_ref(), &proposal_primary_seed.to_le_bytes()];
+    let proposal_seed = [
+        b"proposal".as_ref(),
+        pda_multisig.as_ref(),
+        &proposal_primary_seed.to_le_bytes(),
+    ];
     let (pda_proposal, _proposal_bump) = Pubkey::find_program_address(&proposal_seed, &program_id);
 
     let create_proposal_data = [
-        vec![2], // discriminator (CreateProposal)
-        0u64.to_le_bytes().to_vec(), // expiry: u64 (8 bytes)
+        vec![2],                                      // discriminator (CreateProposal)
+        0u64.to_le_bytes().to_vec(),                  // expiry: u64 (8 bytes)
         proposal_primary_seed.to_le_bytes().to_vec(), // primary_seed: u16 (2 bytes)
         vec![0; 6],
     ]
@@ -798,11 +857,14 @@ fn test_create_proposal_non_admin_member() {
         data: create_proposal_data,
     }];
 
-    let result = common::build_and_send_transaction(&mut svm, &second_admin, create_proposal_instruction);
+    let result =
+        common::build_and_send_transaction(&mut svm, &second_admin, create_proposal_instruction);
     println!("create proposal with normal member result: {:?}", result);
-    assert!(result.is_err(), "Expected error for non-admin member creating proposal");
+    assert!(
+        result.is_err(),
+        "Expected error for non-admin member creating proposal"
+    );
 }
-
 
 #[test]
 fn test_create_transaction() {
@@ -851,8 +913,14 @@ fn test_create_transaction() {
     // Read transaction state directly from bytes
     let transaction_data = &transaction_account.data;
     let tx_index = u64::from_le_bytes([
-        transaction_data[0], transaction_data[1], transaction_data[2], transaction_data[3],
-        transaction_data[4], transaction_data[5], transaction_data[6], transaction_data[7]
+        transaction_data[0],
+        transaction_data[1],
+        transaction_data[2],
+        transaction_data[3],
+        transaction_data[4],
+        transaction_data[5],
+        transaction_data[6],
+        transaction_data[7],
     ]);
     let buf_size = u16::from_le_bytes([transaction_data[8], transaction_data[9]]);
     let bump = transaction_data[522]; // bump is at offset 8 + 2 + 512 = 522

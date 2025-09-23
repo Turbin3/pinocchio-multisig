@@ -5,10 +5,11 @@ pub mod init_multisig;
 pub mod remove_member;
 pub mod update_members;
 pub mod update_multisig;
-
+pub mod vote;
 pub use create_proposal::*;
 pub use create_transaction::*;
 pub use init_multisig::*;
+pub use vote::*;
 
 use pinocchio::program_error::ProgramError;
 
