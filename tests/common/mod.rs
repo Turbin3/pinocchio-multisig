@@ -5,7 +5,7 @@ use litesvm::{
 use pinocchio_multisig::{
     helper::StateDefinition,
     instructions::{CreateProposalIxData, VoteIxData},
-    state::ProposalState,
+    state::{ProposalState, ProposalType},
     ID,
 };
 use solana_sdk::{
@@ -55,6 +55,30 @@ pub fn build_and_send_transaction(
 
     svm.send_transaction(tx)
 }
+
+pub fn build_and_send_transaction_multisig(
+    svm: &mut LiteSVM,
+    fee_payer: &Keypair,
+    instructions: Vec<Instruction>,
+    additional_signers: &[&Keypair],
+) -> Result<TransactionMetadata, FailedTransactionMetadata> {
+    let msg = v0::Message::try_compile(
+        &fee_payer.pubkey(),
+        &instructions,
+        &[],
+        svm.latest_blockhash(),
+    )
+    .unwrap();
+
+    let mut all_signers = Vec::with_capacity(1 + additional_signers.len());
+    all_signers.push(fee_payer);
+    all_signers.extend_from_slice(additional_signers);
+
+    let tx = VersionedTransaction::try_new(VersionedMessage::V0(msg), &all_signers).unwrap();
+
+    svm.send_transaction(tx)
+}
+
 
 pub fn create_multisig(
     svm: &mut LiteSVM,
@@ -109,6 +133,7 @@ pub fn create_proposal(
     fee_payer: &Keypair,
     program_id: Pubkey,
     multisig_pda: Pubkey,
+    tx_type: ProposalType,
 ) -> (Pubkey, u8) {
     let proposal_seed = &[
         ProposalState::SEED.as_bytes(),
@@ -120,6 +145,7 @@ pub fn create_proposal(
     let create_proposal_data = CreateProposalIxData {
         expiry: 1_000_000,
         primary_seed: 0,
+        tx_type,
     };
 
     let mut ix_data = vec![2u8];

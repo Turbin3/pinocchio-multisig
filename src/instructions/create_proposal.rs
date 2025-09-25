@@ -6,7 +6,7 @@ use crate::helper::{
 use crate::state::{
     multisig::MultisigState,
     member::MemberState,
-    proposal::{self, ProposalState, ProposalStatus},
+    proposal::{self, ProposalState, ProposalStatus, ProposalType},
 };
 use pinocchio::{
     account_info::AccountInfo,
@@ -23,6 +23,7 @@ use pinocchio::{
 pub struct CreateProposalIxData {    
     pub expiry: u64,         // 8 bytes
     pub primary_seed: u16,    // 2 bytes
+    pub tx_type: ProposalType,
 }
 
 impl DataLen for CreateProposalIxData {
@@ -101,7 +102,7 @@ pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]
     let current_time = Clock::from_account_info(clock_sysvar_acc)?.unix_timestamp as u64;
 
     let proposal = ProposalState::from_account_info(&proposal_account)?;
-    proposal.new(ix_data.primary_seed, ix_data.expiry, ProposalStatus::Draft, proposal_bump, current_time);
+    proposal.new(ix_data.primary_seed, ix_data.expiry, ProposalStatus::Draft, proposal_bump, current_time, ix_data.tx_type);
 
     Ok(())
 }

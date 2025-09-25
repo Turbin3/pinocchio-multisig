@@ -11,17 +11,18 @@ use crate::state::multisig::MultisigState;
 use crate::state::proposal::{ProposalStatus, ProposalState};
 use crate::state::transaction::TransactionState;
 
-pub fn convert_accounts_to_refs(accounts: &[AccountInfo]) -> Result<&[&AccountInfo], ProgramError> {
+pub struct AccountRefs<'a> {
+    pub refs: [MaybeUninit<&'a AccountInfo>; MAX_CPI_ACCOUNTS],
+    pub count: usize,
+}
+
+pub fn convert_accounts_to_refs<'a>(accounts: &'a [AccountInfo]) -> Result<AccountRefs<'a>, ProgramError> {
     let num_accounts = accounts.len();
     
     if num_accounts > MAX_CPI_ACCOUNTS {
         return Err(ProgramError::InvalidArgument);
     }
 
-    if num_accounts == 0 {
-        return Ok(&[]);
-    }
-    
     const UNINIT_REF: MaybeUninit<&AccountInfo> = MaybeUninit::<&AccountInfo>::uninit();
     let mut account_refs = [UNINIT_REF; MAX_CPI_ACCOUNTS];
     
@@ -35,13 +36,14 @@ pub fn convert_accounts_to_refs(accounts: &[AccountInfo]) -> Result<&[&AccountIn
         }
     }
     
-    Ok(unsafe {
-        core::slice::from_raw_parts(account_refs.as_ptr() as *const &AccountInfo, num_accounts)
+    Ok(AccountRefs {
+        refs: account_refs,
+        count: num_accounts,
     })
 }
 
 pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [payer, proposal, multisig, transaction, _remaining @ ..] = accounts else {
+    let [payer, multisig, proposal, transaction, rent, system_program, _remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys)
     };
 
@@ -55,39 +57,35 @@ pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &
 
     let multisig_data = MultisigState::from_account_info(multisig)?;
 
-    // check if payer is a member of the multisig
-
     let proposal_data = ProposalState::from_account_info(proposal)?;
 
-    if proposal_data.status != ProposalStatus::Succeeded as u8 {
+    let yes_votes = proposal_data.yes_votes;
+
+    if yes_votes < multisig_data.min_threshold {
+        proposal_data.status = ProposalStatus::Failed;
         return Err(ProgramError::InvalidAccountData);
-    }
-
-    // let mut yes_votes = 0;
-    // for vote in proposal_data.votes {
-    //     if vote == 1 {
-    //         yes_votes += 1;
-    //     }
-    // }
-
-    // if yes_votes < multisig_data.min_threshold {
-    //     return Err(ProgramError::InvalidAccountData);
-    // }
+    }    
 
     if Clock::get()?.unix_timestamp > proposal_data.expiry as i64 {
+        proposal_data.status = ProposalStatus::Failed;
         return Err(ProgramError::InvalidAccountData);
     }
+
+    proposal_data.status = ProposalStatus::Succeeded;
 
     let transaction_data = TransactionState::from_account_info(transaction)?;
 
-    if multisig_data.transaction_index != transaction_data.transaction_index  
-        && multisig_data.transaction_index!= proposal_data.transaction_index{
+    if multisig_data.transaction_index != transaction_data.transaction_index {
         return Err(ProgramError::InvalidAccountData);
     }
 
-    let accounts_for_execute = &accounts[2..];
+    let accounts_for_execute = &accounts;
 
-    let account_refs = convert_accounts_to_refs(accounts_for_execute)?;
+    let account_refs_struct = convert_accounts_to_refs(accounts_for_execute)?;
+    
+    let account_refs = unsafe {
+        core::slice::from_raw_parts(account_refs_struct.refs.as_ptr() as *const &AccountInfo, account_refs_struct.count)
+    };
 
     TransactionState::execute(proposal_data.tx_type, account_refs)?;
 

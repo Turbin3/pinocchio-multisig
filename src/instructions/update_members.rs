@@ -17,7 +17,7 @@ impl DataLen for UpdateMemberIxData {
     const LEN: usize = core::mem::size_of::<UpdateMemberIxData>();
 }
 
-pub(crate) fn process_update_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+pub(crate) fn process_update_member(accounts: &[&AccountInfo], data: &[u8]) -> ProgramResult {
     let ix_data = unsafe { load_ix_data::<UpdateMemberIxData>(data)? };
 
     match ix_data.operation {

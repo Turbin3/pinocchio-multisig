@@ -8,10 +8,11 @@ pub struct ProposalState {
     pub expiry: u64,      // Adjust size as needed is it needed here?
     pub created_time: u64,
     pub status: ProposalStatus,
+    pub tx_type: ProposalType,
     pub bump: u8,          // Bump seed for PDA
     pub yes_votes: u8,     // Number of yes votes
     pub no_votes: u8,      // Number of no votes
-    pub _padding: [u8; 4], // padding to reach multiple of 8
+    pub _padding: [u8; 3], // padding to reach multiple of 8
 }
 
 impl StateDefinition for ProposalState {
@@ -65,10 +66,11 @@ impl ProposalState {
                 bytes[17],
             ]),
             status: ProposalStatus::try_from(&bytes[18])?,
-            bump: bytes[19],
-            yes_votes: bytes[20],
-            no_votes: bytes[21],
-            _padding: [0; 4],
+            tx_type: ProposalType::try_from(&bytes[19])?,
+            bump: bytes[20],
+            yes_votes: bytes[21],
+            no_votes: bytes[22],
+            _padding: [0; 3],
         })
     }
 
@@ -78,11 +80,29 @@ impl ProposalState {
         bytes[2..10].copy_from_slice(&self.expiry.to_le_bytes());
         bytes[10..18].copy_from_slice(&self.created_time.to_le_bytes());
         bytes[18] = self.status as u8;
-        bytes[19] = self.bump;
-        bytes[20] = self.yes_votes;
-        bytes[21] = self.no_votes;
-        bytes[22..26].copy_from_slice(&self._padding);
+        bytes[19] = self.tx_type as u8;
+        bytes[20] = self.bump;
+        bytes[21] = self.yes_votes;
+        bytes[22] = self.no_votes;
+        bytes[23..26].copy_from_slice(&self._padding);
         bytes
+    }
+
+    pub fn new(
+        &mut self,
+        proposal_id: u16,
+        expiry: u64,
+        status: ProposalStatus,
+        bump: u8,
+        created_time: u64,
+        tx_type: ProposalType,
+    ) {
+        self.proposal_id = proposal_id;
+        self.expiry = expiry;
+        self.created_time = created_time;
+        self.status = status;
+        self.bump = bump;
+        self.tx_type = tx_type;
     }
 }
 
@@ -111,20 +131,24 @@ impl TryFrom<&u8> for ProposalStatus {
     }
 }
 
-impl ProposalState {
-    pub fn new(
-        &mut self,
-        proposal_id: u16,
-        expiry: u64,
-        status: ProposalStatus,
-        bump: u8,
-        created_time: u64,
-    ) {
-        self.proposal_id = proposal_id;
-        self.expiry = expiry;
-        self.created_time = created_time;
-        self.status = status;
-        self.bump = bump;
-        self.tx_type = self.tx_type;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u8)]
+pub enum ProposalType {
+    Cpi = 0,
+    UpdateMember = 1,
+    UpdateMultisig = 2,
+}
+
+impl TryFrom<&u8> for ProposalType {
+    type Error = ProgramError;
+
+    fn try_from(value: &u8) -> Result<Self, Self::Error> {
+        match *value {
+            0 => Ok(ProposalType::Cpi),
+            1 => Ok(ProposalType::UpdateMember),
+            2 => Ok(ProposalType::UpdateMultisig),
+            _ => Err(ProgramError::InvalidInstructionData),
+        }
     }
 }

@@ -83,4 +83,8 @@ impl MultisigState {
     pub fn update_stale_transaction_index(&mut self, stale_transaction_index: u64) {
         self.stale_transaction_index = stale_transaction_index;
     }
+
+    pub fn update_transaction_index(&mut self) {
+        self.transaction_index += 1;
+    }
 }
