@@ -26,7 +26,7 @@ impl DataLen for UpdateMultisigIxData {
     const LEN: usize = core::mem::size_of::<UpdateMultisigIxData>();
 }
 
-pub(crate) fn process_update_multisig(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+pub(crate) fn process_update_multisig(accounts: &[&AccountInfo], data: &[u8]) -> ProgramResult {
     let [payer, multisig, _remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys)
     };

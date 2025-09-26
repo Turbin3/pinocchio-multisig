@@ -1,4 +1,4 @@
-use pinocchio_multisig::{helper::StateDefinition, state::ProposalState};
+use pinocchio_multisig::{helper::StateDefinition, state::{ProposalState, ProposalType}};
 use solana_sdk::{signature::Keypair, signer::Signer};
 
 mod common;
@@ -15,7 +15,7 @@ pub fn test_first_vote_yes() {
         common::create_multisig(&mut svm, &fee_payer, program_id, admins);
 
     let (pda_proposal, proposal_bump) =
-        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig);
+        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig, ProposalType::Cpi);
 
     // First vote: Yes
     common::vote(
@@ -52,7 +52,7 @@ pub fn test_first_vote_no() {
         common::create_multisig(&mut svm, &fee_payer, program_id, admins);
 
     let (pda_proposal, proposal_bump) =
-        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig);
+        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig, ProposalType::Cpi);
 
     // First vote: No
     common::vote(
@@ -90,7 +90,7 @@ pub fn test_change_vote_from_yes_to_no() {
         common::create_multisig(&mut svm, &fee_payer, program_id, admins);
 
     let (pda_proposal, proposal_bump) =
-        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig);
+        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig, ProposalType::Cpi);
 
     // First vote: Yes
     common::vote(
@@ -140,7 +140,7 @@ pub fn test_change_vote_from_no_to_yes() {
         common::create_multisig(&mut svm, &fee_payer, program_id, admins);
 
     let (pda_proposal, proposal_bump) =
-        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig);
+        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig, ProposalType::Cpi);
 
     // First vote: No
     common::vote(
@@ -190,7 +190,7 @@ pub fn test_multiple_votes_yes_then_no() {
         common::create_multisig(&mut svm, &fee_payer, program_id, admins);
 
     let (pda_proposal, proposal_bump) =
-        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig);
+        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig, ProposalType::Cpi);
 
     // Vote Yes multiple times (should change to No after first)
     common::vote(
@@ -262,7 +262,7 @@ pub fn test_multiple_votes_no_then_yes() {
         common::create_multisig(&mut svm, &fee_payer, program_id, admins);
 
     let (pda_proposal, proposal_bump) =
-        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig);
+        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig, ProposalType::Cpi);
 
     // Vote No multiple times (should change to Yes after first)
     common::vote(
@@ -324,7 +324,7 @@ pub fn test_vote_alternating_pattern() {
         common::create_multisig(&mut svm, &fee_payer, program_id, admins);
 
     let (pda_proposal, proposal_bump) =
-        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig);
+        common::create_proposal(&mut svm, &second_admin, program_id, pda_multisig, ProposalType::Cpi);
 
     // Vote Yes
     common::vote(

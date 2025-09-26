@@ -9,8 +9,8 @@ use crate::state::{member::{MemberState, MemberRole}, multisig::MultisigState};
 use crate::helper::account_init::StateDefinition;
 use pinocchio_system::instructions::Transfer;
 
-pub(crate) fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [payer, multisig_account, rent_acc, _remaining @ ..] = accounts else {
+pub(crate) fn add_member(accounts: &[&AccountInfo], data: &[u8]) -> ProgramResult {
+    let [payer, multisig_account, rent_acc, system_program_acc, _remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -100,13 +100,6 @@ pub(crate) fn add_member(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult
     if role == MemberRole::Admin as u8 {
         multisig_state.admin_counter = multisig_state.admin_counter.checked_add(1).ok_or(ProgramError::ArithmeticOverflow)?;
     }
-
-    let header_len = MultisigState::LEN;
-
-    // The expression inside the block now becomes the value of `header_data`
-    let header_data = unsafe { &mut multisig_account.borrow_mut_data_unchecked()[..header_len] };
-
-    // Pass a reference to `multisig_state`
-    header_data.copy_from_slice(bytemuck::bytes_of(multisig_state));
+    
     Ok(())
 }

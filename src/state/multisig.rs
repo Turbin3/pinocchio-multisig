@@ -10,7 +10,7 @@ use crate::instructions::init_multisig::InitMultisigIxData;
 #[repr(C)]
 pub struct MultisigState {
     pub seed: u64,
-    /// Admin spending limit
+    /// spending limit
     pub spending_limit: u64,
     /// Maximum expiry time for proposals
     pub max_expiry: u64,
@@ -82,5 +82,9 @@ impl MultisigState {
 
     pub fn update_stale_transaction_index(&mut self, stale_transaction_index: u64) {
         self.stale_transaction_index = stale_transaction_index;
+    }
+
+    pub fn update_transaction_index(&mut self) {
+        self.transaction_index += 1;
     }
 }
