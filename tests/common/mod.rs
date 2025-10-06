@@ -8,15 +8,16 @@ use pinocchio_multisig::{
     state::{ProposalState, ProposalType},
     ID,
 };
-use solana_sdk::{
-    instruction::{AccountMeta, Instruction},
-    message::{v0, VersionedMessage},
-    pubkey::Pubkey,
-    signature::Keypair,
-    signer::Signer,
-    system_program,
-    sysvar::rent,
-    transaction::VersionedTransaction,
+
+use {
+    solana_instruction::{AccountMeta, Instruction},
+    solana_keypair::Keypair,
+    solana_message::{v0, VersionedMessage},
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    solana_system_program as system_program,
+    solana_sysvar::{clock, rent},
+    solana_transaction::versioned::VersionedTransaction,
 };
 
 use pinocchio_multisig::helper::utils::to_bytes;
@@ -107,7 +108,7 @@ pub fn create_multisig(
         AccountMeta::new(pda_multisig, false),
         AccountMeta::new(pda_treasury, false),
         AccountMeta::new(rent::ID, false),
-        AccountMeta::new(system_program::ID, false),
+        AccountMeta::new(system_program::id(), false),
     ];
     let admins_accounts = admins
         .iter()
@@ -157,8 +158,8 @@ pub fn create_proposal(
             AccountMeta::new(pda_proposal, false),      // proposal_account (will be created)
             AccountMeta::new_readonly(multisig_pda, false), // multisig_account (readonly)
             AccountMeta::new_readonly(rent::ID, false), // rent sysvar
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false), // clock sysvar
-            AccountMeta::new_readonly(system_program::ID, false), // system program
+            AccountMeta::new_readonly(clock::ID, false), // clock sysvar
+            AccountMeta::new_readonly(system_program::id(), false), // system program
         ],
         data: ix_data,
     };
@@ -196,7 +197,7 @@ pub fn vote(
             AccountMeta::new(multisig_pda, false),
             AccountMeta::new(proposal_pda, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: ix_data,
     }];

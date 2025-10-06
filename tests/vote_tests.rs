@@ -2,7 +2,7 @@ use pinocchio_multisig::{
     helper::StateDefinition,
     state::{ProposalState, ProposalType},
 };
-use solana_sdk::{signature::Keypair, signer::Signer};
+use {solana_keypair::Keypair, solana_signer::Signer};
 
 mod common;
 
