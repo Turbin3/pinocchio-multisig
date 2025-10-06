@@ -1,11 +1,8 @@
-use pinocchio::{
-    account_info::AccountInfo,
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    ProgramResult,
-};
-use crate::state::{member::MemberState, multisig::MultisigState};
 use crate::helper::account_init::StateDefinition;
+use crate::state::{member::MemberState, multisig::MultisigState};
+use pinocchio::{
+    account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey, ProgramResult,
+};
 
 pub(crate) fn remove_member(accounts: &[&AccountInfo], data: &[u8]) -> ProgramResult {
     let [_, multisig_account, _rent_acc, _system_program_acc, _remaining @ ..] = accounts else {
@@ -60,7 +57,9 @@ pub(crate) fn remove_member(accounts: &[&AccountInfo], data: &[u8]) -> ProgramRe
         // Admin removal:
         // 1) swap the selected admin with last admin slot (if different)
         // 2) shift the normal-members block left by one member slot
-        let last_admin_idx = admin_count.checked_sub(1).ok_or(ProgramError::InvalidAccountData)?;
+        let last_admin_idx = admin_count
+            .checked_sub(1)
+            .ok_or(ProgramError::InvalidAccountData)?;
 
         if idx != last_admin_idx {
             let a = idx * member_len;
@@ -78,7 +77,10 @@ pub(crate) fn remove_member(accounts: &[&AccountInfo], data: &[u8]) -> ProgramRe
         if normal_count > 0 {
             // dst = (admin_section_end - member_len)..(normal_members_end - member_len)
             // src = (admin_section_end)..(normal_members_end)
-            member_area.copy_within(admin_section_end..normal_members_end, admin_section_end - member_len);
+            member_area.copy_within(
+                admin_section_end..normal_members_end,
+                admin_section_end - member_len,
+            );
 
             let last_offset = (total_members - 1) * member_len;
             member_area[last_offset..last_offset + member_len].fill(0);
@@ -87,7 +89,10 @@ pub(crate) fn remove_member(accounts: &[&AccountInfo], data: &[u8]) -> ProgramRe
             member_area[last_offset..last_offset + member_len].fill(0);
         }
 
-        multisig_state.admin_counter = multisig_state.admin_counter.checked_sub(1).ok_or(ProgramError::ArithmeticOverflow)?;
+        multisig_state.admin_counter = multisig_state
+            .admin_counter
+            .checked_sub(1)
+            .ok_or(ProgramError::ArithmeticOverflow)?;
     } else {
         // Normal member removal:
         let last_member_idx = total_members - 1;
@@ -102,9 +107,15 @@ pub(crate) fn remove_member(accounts: &[&AccountInfo], data: &[u8]) -> ProgramRe
         member_area[last_offset..last_offset + member_len].fill(0);
     }
 
-    multisig_state.num_members = multisig_state.num_members.checked_sub(1).ok_or(ProgramError::ArithmeticOverflow)?;
+    multisig_state.num_members = multisig_state
+        .num_members
+        .checked_sub(1)
+        .ok_or(ProgramError::ArithmeticOverflow)?;
 
-    let new_size = multisig_account.data_len().checked_sub(member_len).ok_or(ProgramError::InvalidAccountData)?;
+    let new_size = multisig_account
+        .data_len()
+        .checked_sub(member_len)
+        .ok_or(ProgramError::InvalidAccountData)?;
     multisig_account.resize(new_size)?;
 
     Ok(())

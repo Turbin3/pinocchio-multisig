@@ -79,7 +79,6 @@ pub fn build_and_send_transaction_multisig(
     svm.send_transaction(tx)
 }
 
-
 pub fn create_multisig(
     svm: &mut LiteSVM,
     fee_payer: &Keypair,

@@ -131,7 +131,6 @@ impl TryFrom<&u8> for ProposalStatus {
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum ProposalType {

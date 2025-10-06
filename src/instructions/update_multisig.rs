@@ -3,23 +3,23 @@ use pinocchio::{
     instruction::{Seed, Signer},
     program_error::ProgramError,
     pubkey::{self, Pubkey},
-    ProgramResult,
     sysvars::rent::Rent,
+    ProgramResult,
 };
 
-use crate::state::MultisigState;
 use crate::helper::{
-    utils::{load_ix_data, DataLen},
     account_checks::check_signer,
     account_init::{create_pda_account, StateDefinition},
+    utils::{load_ix_data, DataLen},
 };
+use crate::state::MultisigState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, shank::ShankType)]
 pub struct UpdateMultisigIxData {
-    pub value: u64, // For spending limit and stale transaction index
-    pub update_type: u8, // 1 for update threshold, 2 for update spending limit, 3 for stale transaction index    
-    pub threshold: u8, // For threshold updates
+    pub value: u64,      // For spending limit and stale transaction index
+    pub update_type: u8, // 1 for update threshold, 2 for update spending limit, 3 for stale transaction index
+    pub threshold: u8,   // For threshold updates
 }
 
 impl DataLen for UpdateMultisigIxData {
@@ -28,13 +28,13 @@ impl DataLen for UpdateMultisigIxData {
 
 pub(crate) fn process_update_multisig(accounts: &[&AccountInfo], data: &[u8]) -> ProgramResult {
     let [payer, multisig, _remaining @ ..] = accounts else {
-        return Err(ProgramError::NotEnoughAccountKeys)
+        return Err(ProgramError::NotEnoughAccountKeys);
     };
 
     if !payer.is_signer() {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    
+
     let ix_data = unsafe { load_ix_data::<UpdateMultisigIxData>(data)? };
 
     let mut multisig_state = MultisigState::from_account_info(multisig)?;

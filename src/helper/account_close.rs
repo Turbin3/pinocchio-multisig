@@ -1,8 +1,4 @@
-use pinocchio::{
-    account_info::AccountInfo,
-    program_error::ProgramError,
-    ProgramResult,
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult};
 
 #[inline(always)]
 pub fn close_account(account: &AccountInfo, destination: &AccountInfo) -> ProgramResult {
@@ -12,7 +8,7 @@ pub fn close_account(account: &AccountInfo, destination: &AccountInfo) -> Progra
     }
 
     *destination.try_borrow_mut_lamports()? += *account.try_borrow_lamports()?;
-    
+
     account.realloc(1, true)?;
     account.close()
-} 
+}
