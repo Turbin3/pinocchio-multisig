@@ -42,13 +42,26 @@ pub fn convert_accounts_to_refs<'a>(accounts: &'a [AccountInfo]) -> Result<Accou
     })
 }
 
+// @audit what if we pass fake transaction acc that has valid index,len but with bad data in it , we can then execute the transaction
+// with valid proposal acc, multisig acc
+// @audit we can pass proposal acc multiple times with valid+another transaction acc
 pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [payer, multisig, proposal, transaction, rent, system_program, _remaining @ ..] = accounts else {
+    let [payer, multisig, proposal, transaction, rent, _system_program, _remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys)
     };
 
     if !payer.is_signer() {
         return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    if multisig.owner() != &crate::ID {
+        return Err(ProgramError::IllegalOwner);
+    }
+    if proposal.owner() != &crate::ID {
+        return Err(ProgramError::IllegalOwner);
+    }
+    if transaction.owner() != &crate::ID {
+        return Err(ProgramError::IllegalOwner);
     }
 
     if multisig.data_is_empty() || proposal.data_is_empty() || transaction.data_is_empty() {
@@ -59,19 +72,29 @@ pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &
 
     let proposal_data = ProposalState::from_account_info(proposal)?;
 
+    ProposalState::validate_pda(
+        proposal.key(),
+        multisig.key(),
+        proposal_data.bump,
+        proposal_data.proposal_id,
+    )?;
+
+    match proposal_data.status {
+        ProposalStatus::Succeeded | ProposalStatus::Cancelled | ProposalStatus::Failed => {
+            return Err(ProgramError::InvalidAccountData)
+        }
+        _ => {}
+    }
+
     let yes_votes = proposal_data.yes_votes;
 
     if yes_votes < multisig_data.min_threshold {
-        proposal_data.status = ProposalStatus::Failed;
         return Err(ProgramError::InvalidAccountData);
     }    
 
     if Clock::get()?.unix_timestamp > proposal_data.expiry as i64 {
-        proposal_data.status = ProposalStatus::Failed;
         return Err(ProgramError::InvalidAccountData);
     }
-
-    proposal_data.status = ProposalStatus::Succeeded;
 
     let transaction_data = TransactionState::from_account_info(transaction)?;
 
@@ -88,6 +111,8 @@ pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &
     };
 
     TransactionState::execute(proposal_data.tx_type, account_refs)?;
+
+    proposal_data.status = ProposalStatus::Succeeded;
 
     Ok(())
 }
