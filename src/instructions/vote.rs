@@ -49,8 +49,21 @@ pub fn process_vote_instruction(accounts: &[AccountInfo], data: &[u8]) -> Progra
     };
     let ix_data = VoteIxData::from_bytes(data)?;
 
+    if multisig_account.owner() != &crate::ID {
+        return Err(ProgramError::IllegalOwner);
+    }
     if proposal_account.owner() != &crate::ID {
         return Err(ProgramError::IllegalOwner);
+    }
+
+    let multisig_header = MultisigState::from_account_info(multisig_account)?;
+    let derived_multisig = pinocchio_pubkey::derive_address(
+        &[MultisigState::SEED.as_bytes(), &multisig_header.primary_seed.to_le_bytes()],
+        Some(ix_data.multisig_bump),
+        &crate::ID,
+    );
+    if derived_multisig != *multisig_account.key() {
+        return Err(ProgramError::InvalidAccountOwner);
     }
 
     let (_, members) = unsafe {
@@ -79,6 +92,13 @@ pub fn process_vote_instruction(accounts: &[AccountInfo], data: &[u8]) -> Progra
     };
 
     let mut proposal = ProposalState::from_bytes(proposal)?;
+
+    ProposalState::validate_pda(
+        proposal_account.key(),
+        multisig_account.key(),
+        ix_data.proposal_bump,
+        proposal.proposal_id,
+    )?;
 
     let mut voted = false;
     let mut vote_index = 0;
