@@ -1,15 +1,11 @@
-use pinocchio::{
-    account_info::AccountInfo,
-    program_error::ProgramError,
-    ProgramResult,
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult};
 
 use crate::helper::utils::{load_ix_data, DataLen};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, shank::ShankType)]
 pub struct UpdateMemberIxData {
-    pub operation: u8, // 1 for add, 2 for remove
+    pub operation: u8,         // 1 for add, 2 for remove
     pub member_data: [u8; 33], // 32 bytes pubkey + 1 byte role (for add) or just 32 bytes pubkey (for remove)
 }
 

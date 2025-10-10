@@ -1,5 +1,10 @@
-use pinocchio::{account_info::{AccountInfo, Ref}, program_error::ProgramError, pubkey::Pubkey, ProgramResult};
 use core::mem::size_of;
+use pinocchio::{
+    account_info::{AccountInfo, Ref},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+    ProgramResult,
+};
 
 use bytemuck::{Pod, Zeroable};
 
