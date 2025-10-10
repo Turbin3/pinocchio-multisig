@@ -1,10 +1,10 @@
-use solana_sdk::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    signature::Keypair,
-    signer::Signer,
-    system_program,
-    sysvar::rent,
+use {
+    solana_instruction::{AccountMeta, Instruction},
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    solana_system_program as system_program,
+    solana_sysvar::{clock, rent},
 };
 
 mod common;
@@ -57,7 +57,7 @@ fn test_create_proposal() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data,
     }];
@@ -95,8 +95,8 @@ fn test_create_proposal() {
             AccountMeta::new(pda_proposal, false),      // proposal_account (will be created)
             AccountMeta::new_readonly(pda_multisig, false), // multisig_account (readonly)
             AccountMeta::new_readonly(rent::ID, false), // rent sysvar
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false), // clock sysvar
-            AccountMeta::new_readonly(system_program::ID, false), // system program
+            AccountMeta::new_readonly(clock::ID, false), // clock sysvar
+            AccountMeta::new_readonly(system_program::id(), false), // system program
         ],
         data: create_proposal_data,
     }];
@@ -184,8 +184,8 @@ fn test_create_proposal_multisig_not_initialized() {
             AccountMeta::new(pda_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false), // clock sysvar
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(clock::ID, false), // clock sysvar
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: create_proposal_data,
     }];
@@ -234,8 +234,8 @@ fn test_create_proposal_account_already_exists() {
             AccountMeta::new(pda_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(clock::ID, false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: create_proposal_data,
     }];
@@ -287,8 +287,8 @@ fn test_create_proposal_invalid_multisig_owner() {
             AccountMeta::new(pda_proposal, false),
             AccountMeta::new_readonly(fake_multisig.pubkey(), false), // wrong owner
             AccountMeta::new_readonly(rent::ID, false),
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(clock::ID, false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: create_proposal_data,
     }];
@@ -331,7 +331,7 @@ fn test_create_proposal_invalid_instruction_data() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: init_data,
     }];
@@ -358,8 +358,8 @@ fn test_create_proposal_invalid_instruction_data() {
             AccountMeta::new(pda_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(clock::ID, false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: create_proposal_data,
     }];
@@ -399,7 +399,7 @@ fn test_create_proposal_wrong_proposal_pda() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: init_data,
     }];
@@ -432,8 +432,8 @@ fn test_create_proposal_wrong_proposal_pda() {
             AccountMeta::new(wrong_pda_proposal, false), // wrong PDA
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(clock::ID, false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: create_proposal_data,
     }];
@@ -481,7 +481,7 @@ fn test_create_proposal_non_admin_member() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
             AccountMeta::new(admin_member.pubkey(), false), // admin member
             AccountMeta::new(second_admin.pubkey(), false), // normal member
         ],
@@ -518,8 +518,8 @@ fn test_create_proposal_non_admin_member() {
             AccountMeta::new(pda_proposal, false),         // proposal account
             AccountMeta::new_readonly(pda_multisig, false), // multisig account
             AccountMeta::new_readonly(rent::ID, false),    // rent sysvar
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
-            AccountMeta::new_readonly(system_program::ID, false), // system program
+            AccountMeta::new_readonly(clock::ID, false),
+            AccountMeta::new_readonly(system_program::id(), false), // system program
         ],
         data: create_proposal_data,
     }];
