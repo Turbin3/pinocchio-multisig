@@ -3,25 +3,25 @@ use pinocchio::{
     instruction::{Seed, Signer},
     program_error::ProgramError,
     pubkey::{self, Pubkey},
-    ProgramResult,
     sysvars::rent::Rent,
+    ProgramResult,
 };
 
-use crate::state::{MultisigState, MemberRole};
 use crate::helper::{
-    utils::{load_ix_data, DataLen},
     account_checks::check_signer,
     account_init::{create_pda_account, StateDefinition},
+    utils::{load_ix_data, DataLen},
 };
+use crate::state::{MemberRole, MultisigState};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, shank::ShankType)]
 pub struct InitMultisigIxData {
-    pub max_expiry: u64,      // 8 bytes
-    pub primary_seed: u16,    // 2 bytes
-    pub min_threshold: u8,    // 1 byte
-    pub num_members: u8,      // 1 byte
-    pub num_admins: u8,       // 1 byte
+    pub max_expiry: u64,   // 8 bytes
+    pub primary_seed: u16, // 2 bytes
+    pub min_threshold: u8, // 1 byte
+    pub num_members: u8,   // 1 byte
+    pub num_admins: u8,    // 1 byte
 }
 
 impl DataLen for InitMultisigIxData {
@@ -48,7 +48,10 @@ pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) 
     }
 
     // Multisig Config PDA
-    let seeds = &[MultisigState::SEED.as_bytes(), &ix_data.primary_seed.to_le_bytes()];
+    let seeds = &[
+        MultisigState::SEED.as_bytes(),
+        &ix_data.primary_seed.to_le_bytes(),
+    ];
     let (pda_multisig, multisig_bump) = pubkey::find_program_address(seeds, &crate::ID);
 
     if pda_multisig.ne(multisig.key()) {
@@ -75,15 +78,17 @@ pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) 
     create_pda_account::<MultisigState>(&creator, &multisig, &signer_seeds, &rent_account)?;
 
     let multisig_account = MultisigState::from_account_info(&multisig)?;
-    multisig_account.new(
-        treasury.key(),
-        treasury_bump,
-        multisig_bump,
-        ix_data,
-    );
+    multisig_account.new(treasury.key(), treasury_bump, multisig_bump, ix_data);
 
     // Add all members
-    add_all_members(creator, multisig, &rent_account, multisig_account, remaining, ix_data)?;
+    add_all_members(
+        creator,
+        multisig,
+        &rent_account,
+        multisig_account,
+        remaining,
+        ix_data,
+    )?;
 
     if !treasury.data_is_empty() {
         return Err(ProgramError::AccountAlreadyInitialized);
@@ -97,7 +102,12 @@ pub fn process_init_multisig_instruction(accounts: &[AccountInfo], data: &[u8]) 
         Seed::from(&treasury_bump_bytes),
     ];
 
-    create_pda_account::<MultisigState>(&creator, &treasury, &treasury_signer_seeds, &rent_account)?;
+    create_pda_account::<MultisigState>(
+        &creator,
+        &treasury,
+        &treasury_signer_seeds,
+        &rent_account,
+    )?;
 
     Ok(())
 }
@@ -112,7 +122,8 @@ fn add_all_members(
 ) -> ProgramResult {
     if ix_data.num_members > 0 {
         // Calculate total size needed for all members
-        let total_member_size = ix_data.num_members as usize * crate::state::member::MemberState::LEN;
+        let total_member_size =
+            ix_data.num_members as usize * crate::state::member::MemberState::LEN;
         let new_size = multisig.data_len() + total_member_size;
         let min_balance = rent_account.minimum_balance(new_size);
         let rent_diff = min_balance.saturating_sub(multisig.lamports());
@@ -141,7 +152,7 @@ fn add_all_members(
             let member = &remaining[i];
             let member_start = i * crate::state::member::MemberState::LEN;
             let member_end = member_start + crate::state::member::MemberState::LEN;
-            
+
             // Copy the pubkey directly
             member_data[member_start..member_end].copy_from_slice(member.key());
         }
@@ -150,6 +161,6 @@ fn add_all_members(
         multisig_account.num_members = ix_data.num_members;
         multisig_account.admin_counter = ix_data.num_admins;
     }
-    
+
     Ok(())
 }

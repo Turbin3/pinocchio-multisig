@@ -1,11 +1,11 @@
 use crate::helper::{
+    account_checks::check_signer,
     account_init::{create_pda_account, StateDefinition},
     utils::{load_ix_data, DataLen},
-    account_checks::check_signer,
 };
 use crate::state::{
-    multisig::MultisigState,
     member::MemberState,
+    multisig::MultisigState,
     proposal::{self, ProposalState, ProposalStatus, ProposalType},
 };
 use pinocchio::{
@@ -20,9 +20,9 @@ use pinocchio::{
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, shank::ShankType)]
-pub struct CreateProposalIxData {    
-    pub expiry: u64,         // 8 bytes
-    pub primary_seed: u16,    // 2 bytes
+pub struct CreateProposalIxData {
+    pub expiry: u64,       // 8 bytes
+    pub primary_seed: u16, // 2 bytes
     pub tx_type: ProposalType,
 }
 
@@ -31,7 +31,8 @@ impl DataLen for CreateProposalIxData {
 }
 
 pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [creator, proposal_account, multisig_account, rent_sysvar_acc, clock_sysvar_acc, _remaining @ ..] = accounts
+    let [creator, proposal_account, multisig_account, rent_sysvar_acc, clock_sysvar_acc, _remaining @ ..] =
+        accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
@@ -64,7 +65,8 @@ pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]
             let member_start = i * MemberState::LEN;
             let member_end = member_start + MemberState::LEN;
             let member_bytes = &member_data[member_start..member_end];
-            let member_pubkey = Pubkey::from(*unsafe { &*(member_bytes.as_ptr() as *const [u8; 32]) });
+            let member_pubkey =
+                Pubkey::from(*unsafe { &*(member_bytes.as_ptr() as *const [u8; 32]) });
 
             if member_pubkey == *creator.key() {
                 is_creator_admin = true;
@@ -80,7 +82,7 @@ pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]
     let seeds = &[
         ProposalState::SEED.as_bytes(),
         multisig_account.key().as_slice(),
-        &ix_data.primary_seed.to_le_bytes()
+        &ix_data.primary_seed.to_le_bytes(),
     ];
     let (pda_proposal, proposal_bump) = pubkey::find_program_address(seeds, &crate::ID);
 
@@ -102,7 +104,14 @@ pub fn process_create_proposal_instruction(accounts: &[AccountInfo], data: &[u8]
     let current_time = Clock::from_account_info(clock_sysvar_acc)?.unix_timestamp as u64;
 
     let proposal = ProposalState::from_account_info(&proposal_account)?;
-    proposal.new(ix_data.primary_seed, ix_data.expiry, ProposalStatus::Draft, proposal_bump, current_time, ix_data.tx_type);
+    proposal.new(
+        ix_data.primary_seed,
+        ix_data.expiry,
+        ProposalStatus::Draft,
+        proposal_bump,
+        current_time,
+        ix_data.tx_type,
+    );
 
     Ok(())
 }

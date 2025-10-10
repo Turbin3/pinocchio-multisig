@@ -1,12 +1,12 @@
+use crate::helper::account_init::StateDefinition;
+use crate::state::{
+    member::{MemberRole, MemberState},
+    multisig::MultisigState,
+};
 use pinocchio::{
-    account_info::AccountInfo,
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    sysvars::rent::Rent,
+    account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey, sysvars::rent::Rent,
     ProgramResult,
 };
-use crate::state::{member::{MemberState, MemberRole}, multisig::MultisigState};
-use crate::helper::account_init::StateDefinition;
 use pinocchio_system::instructions::Transfer;
 
 pub(crate) fn add_member(accounts: &[&AccountInfo], data: &[u8]) -> ProgramResult {
@@ -95,11 +95,17 @@ pub(crate) fn add_member(accounts: &[&AccountInfo], data: &[u8]) -> ProgramResul
     }
 
     // Update counters
-    multisig_state.num_members = multisig_state.num_members.checked_add(1).ok_or(ProgramError::ArithmeticOverflow)?;
+    multisig_state.num_members = multisig_state
+        .num_members
+        .checked_add(1)
+        .ok_or(ProgramError::ArithmeticOverflow)?;
 
     if role == MemberRole::Admin as u8 {
-        multisig_state.admin_counter = multisig_state.admin_counter.checked_add(1).ok_or(ProgramError::ArithmeticOverflow)?;
+        multisig_state.admin_counter = multisig_state
+            .admin_counter
+            .checked_add(1)
+            .ok_or(ProgramError::ArithmeticOverflow)?;
     }
-    
+
     Ok(())
 }
