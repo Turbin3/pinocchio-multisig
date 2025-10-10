@@ -25,6 +25,16 @@ default = []
 std = []
 
 [dev-dependencies]
-litesvm = "0.6.1"
-solana-sdk = "2.2.1"
+litesvm = "0.8.1"
+solana-client = "3.0.5"
+solana-instruction = "3.0.0"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-pubkey = "3.0.0"
+solana-program = "3.0.0"
+solana-signer = "3.0.0"
+solana-signature = "3.1.0"
+solana-system-program = "3.0.5"
+solana-sysvar = "3.0.0"
+solana-transaction = "3.0.1"
 hex = "0.4"

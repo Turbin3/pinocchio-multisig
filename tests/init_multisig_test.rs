@@ -1,12 +1,12 @@
 use pinocchio_multisig::helper::account_init::StateDefinition;
 use pinocchio_multisig::state::{MemberState, MultisigState};
-use solana_sdk::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    signature::Keypair,
-    signer::Signer,
-    system_program,
-    sysvar::rent,
+use {
+    solana_instruction::{AccountMeta, Instruction},
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    solana_system_program as system_program,
+    solana_sysvar::{clock, rent},
 };
 
 mod common;
@@ -53,7 +53,7 @@ fn test_init_multisig_no_members() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data,
     }];
@@ -120,7 +120,7 @@ fn test_init_multisig_with_members() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
             AccountMeta::new(second_admin_pubkey, false),
             AccountMeta::new(third_member.pubkey(), false),
             AccountMeta::new(fourth_member.pubkey(), false),
@@ -210,7 +210,7 @@ fn test_init_multisig_all_admins() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
             AccountMeta::new(second_admin_pubkey, false),
             AccountMeta::new(third_member.pubkey(), false),
         ],
@@ -272,7 +272,7 @@ fn test_init_multisig_invalid_data() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data,
     }];
@@ -321,7 +321,7 @@ fn test_init_multisig_account_already_initialized() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: data.clone(),
     }];
@@ -337,7 +337,7 @@ fn test_init_multisig_account_already_initialized() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data,
     }];

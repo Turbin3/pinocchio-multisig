@@ -1,9 +1,9 @@
-use solana_sdk::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    signer::Signer,
-    system_program,
-    sysvar::rent,
+use {
+    solana_instruction::{AccountMeta, Instruction},
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    solana_system_program as system_program,
+    solana_sysvar::rent,
 };
 
 mod common;
@@ -39,7 +39,7 @@ fn test_create_transaction() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data,
     }];
@@ -113,7 +113,7 @@ fn test_create_transaction_max_buffer() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data,
     }];
@@ -159,7 +159,7 @@ fn test_create_transaction_empty_buffer() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data,
     }];
@@ -207,7 +207,7 @@ fn test_create_transaction_account_already_initialized() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: data.clone(),
     }];
@@ -222,7 +222,7 @@ fn test_create_transaction_account_already_initialized() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data,
     }];
