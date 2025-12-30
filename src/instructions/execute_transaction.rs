@@ -51,16 +51,6 @@ pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    if multisig.owner() != &crate::ID {
-        return Err(ProgramError::IllegalOwner);
-    }
-    if proposal.owner() != &crate::ID {
-        return Err(ProgramError::IllegalOwner);
-    }
-    if transaction.owner() != &crate::ID {
-        return Err(ProgramError::IllegalOwner);
-    }
-
     if multisig.data_is_empty() || proposal.data_is_empty() || transaction.data_is_empty() {
         return Err(ProgramError::InvalidAccountData);
     }
