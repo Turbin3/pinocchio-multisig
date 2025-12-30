@@ -42,9 +42,6 @@ pub fn convert_accounts_to_refs<'a>(accounts: &'a [AccountInfo]) -> Result<Accou
     })
 }
 
-// @audit what if we pass fake transaction acc that has valid index,len but with bad data in it , we can then execute the transaction
-// with valid proposal acc, multisig acc
-// @audit we can pass proposal acc multiple times with valid+another transaction acc
 pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     let [payer, multisig, proposal, transaction, rent, _system_program, _remaining @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys)
