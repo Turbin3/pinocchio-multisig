@@ -49,13 +49,6 @@ pub fn process_vote_instruction(accounts: &[AccountInfo], data: &[u8]) -> Progra
     };
     let ix_data = VoteIxData::from_bytes(data)?;
 
-    if multisig_account.owner() != &crate::ID {
-        return Err(ProgramError::IllegalOwner);
-    }
-    if proposal_account.owner() != &crate::ID {
-        return Err(ProgramError::IllegalOwner);
-    }
-
     let multisig_header = MultisigState::from_account_info(multisig_account)?;
     let derived_multisig = pinocchio_pubkey::derive_address(
         &[MultisigState::SEED.as_bytes(), &multisig_header.primary_seed.to_le_bytes()],
