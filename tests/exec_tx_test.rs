@@ -4,13 +4,14 @@ use pinocchio_multisig::{
     instructions::{UpdateMemberIxData, UpdateMultisigIxData},
     state::{MemberState, MultisigState},
 };
-use solana_sdk::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    signature::Keypair,
-    signer::Signer,
-    system_program,
-    sysvar::rent,
+
+use {
+    solana_instruction::{AccountMeta, Instruction},
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    solana_system_program as system_program,
+    solana_sysvar::{clock, rent},
 };
 
 mod common;
@@ -65,7 +66,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
             AccountMeta::new(second_admin_pubkey, false),
             AccountMeta::new(fourth_member.pubkey(), false),
         ],
@@ -102,8 +103,8 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_proposal, false),       // proposal_account (will be created)
             AccountMeta::new_readonly(pda_multisig, false), // multisig_account (readonly)
             AccountMeta::new_readonly(rent::ID, false),  // rent sysvar
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false), // clock sysvar
-            AccountMeta::new_readonly(system_program::ID, false), // system program
+            AccountMeta::new_readonly(clock::ID, false), // clock sysvar
+            AccountMeta::new_readonly(system_program::id(), false), // system program
         ],
         data: create_proposal_data,
     }];
@@ -162,7 +163,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: create_transaction_data,
     }];
@@ -183,7 +184,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_proposal, false),      // proposal
             AccountMeta::new(pda_transaction, false),   // transaction
             AccountMeta::new(rent::ID, false),          // rent for add_member
-            AccountMeta::new(system_program::ID, false), // system program for add_member
+            AccountMeta::new(system_program::id(), false), // system program for add_member
         ],
         data: execute_transaction_data,
     }];
@@ -262,8 +263,8 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_remove_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(clock::ID, false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: create_remove_proposal_data,
     }];
@@ -319,7 +320,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_remove_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: create_remove_transaction_data,
     }];
@@ -343,7 +344,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_remove_proposal, false),
             AccountMeta::new(pda_remove_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: execute_remove_transaction_data,
     }];
@@ -392,8 +393,8 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_add_admin_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(clock::ID, false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: create_add_admin_proposal_data,
     }];
@@ -449,7 +450,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_add_admin_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: create_add_admin_transaction_data,
     }];
@@ -473,7 +474,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_add_admin_proposal, false),
             AccountMeta::new(pda_add_admin_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: execute_add_admin_transaction_data,
     }];
@@ -548,8 +549,8 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_add_normal_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(clock::ID, false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: create_add_normal_proposal_data,
     }];
@@ -605,7 +606,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_add_normal_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: create_add_normal_transaction_data,
     }];
@@ -628,7 +629,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_add_normal_proposal, false),
             AccountMeta::new(pda_add_normal_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: execute_add_normal_transaction_data,
     }];
@@ -672,8 +673,8 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_remove_first_admin_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(clock::ID, false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: create_remove_first_admin_proposal_data,
     }];
@@ -733,7 +734,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_remove_first_admin_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: create_remove_first_admin_transaction_data,
     }];
@@ -757,7 +758,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_remove_first_admin_proposal, false),
             AccountMeta::new(pda_remove_first_admin_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: execute_remove_first_admin_transaction_data,
     }];
@@ -847,8 +848,8 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_remove_fifth_member_proposal, false),
             AccountMeta::new_readonly(pda_multisig, false),
             AccountMeta::new_readonly(rent::ID, false),
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false),
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(clock::ID, false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: create_remove_fifth_member_proposal_data,
     }];
@@ -914,7 +915,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_remove_fifth_member_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: create_remove_fifth_member_transaction_data,
     }];
@@ -938,7 +939,7 @@ fn test_execute_transaction_update_member() {
             AccountMeta::new(pda_remove_fifth_member_proposal, false),
             AccountMeta::new(pda_remove_fifth_member_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: execute_remove_fifth_member_transaction_data,
     }];
@@ -1037,7 +1038,7 @@ fn test_execute_transaction_update_threshold() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
             AccountMeta::new(second_admin_pubkey, false),
             AccountMeta::new(fourth_member.pubkey(), false),
         ],
@@ -1074,8 +1075,8 @@ fn test_execute_transaction_update_threshold() {
             AccountMeta::new(pda_proposal, false),       // proposal_account (will be created)
             AccountMeta::new_readonly(pda_multisig, false), // multisig_account (readonly)
             AccountMeta::new_readonly(rent::ID, false),  // rent sysvar
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false), // clock sysvar
-            AccountMeta::new_readonly(system_program::ID, false), // system program
+            AccountMeta::new_readonly(clock::ID, false), // clock sysvar
+            AccountMeta::new_readonly(system_program::id(), false), // system program
         ],
         data: create_proposal_data,
     }];
@@ -1128,7 +1129,7 @@ fn test_execute_transaction_update_threshold() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: create_transaction_data,
     }];
@@ -1149,7 +1150,7 @@ fn test_execute_transaction_update_threshold() {
             AccountMeta::new(pda_proposal, false),      // proposal
             AccountMeta::new(pda_transaction, false),   // transaction
             AccountMeta::new(rent::ID, false),          // rent
-            AccountMeta::new(system_program::ID, false), // system program
+            AccountMeta::new(system_program::id(), false), // system program
         ],
         data: execute_transaction_data,
     }];
@@ -1216,7 +1217,7 @@ fn test_execute_transaction_update_spending_limit() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
             AccountMeta::new(second_admin_pubkey, false),
             AccountMeta::new(fourth_member.pubkey(), false),
         ],
@@ -1253,8 +1254,8 @@ fn test_execute_transaction_update_spending_limit() {
             AccountMeta::new(pda_proposal, false),       // proposal_account (will be created)
             AccountMeta::new_readonly(pda_multisig, false), // multisig_account (readonly)
             AccountMeta::new_readonly(rent::ID, false),  // rent sysvar
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false), // clock sysvar
-            AccountMeta::new_readonly(system_program::ID, false), // system program
+            AccountMeta::new_readonly(clock::ID, false), // clock sysvar
+            AccountMeta::new_readonly(system_program::id(), false), // system program
         ],
         data: create_proposal_data,
     }];
@@ -1307,7 +1308,7 @@ fn test_execute_transaction_update_spending_limit() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: create_transaction_data,
     }];
@@ -1328,7 +1329,7 @@ fn test_execute_transaction_update_spending_limit() {
             AccountMeta::new(pda_proposal, false),      // proposal
             AccountMeta::new(pda_transaction, false),   // transaction
             AccountMeta::new(rent::ID, false),          // rent
-            AccountMeta::new(system_program::ID, false), // system program
+            AccountMeta::new(system_program::id(), false), // system program
         ],
         data: execute_transaction_data,
     }];
@@ -1395,7 +1396,7 @@ fn test_execute_transaction_update_stale_transaction_index() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
             AccountMeta::new(second_admin_pubkey, false),
             AccountMeta::new(fourth_member.pubkey(), false),
         ],
@@ -1432,8 +1433,8 @@ fn test_execute_transaction_update_stale_transaction_index() {
             AccountMeta::new(pda_proposal, false),       // proposal_account (will be created)
             AccountMeta::new_readonly(pda_multisig, false), // multisig_account (readonly)
             AccountMeta::new_readonly(rent::ID, false),  // rent sysvar
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false), // clock sysvar
-            AccountMeta::new_readonly(system_program::ID, false), // system program
+            AccountMeta::new_readonly(clock::ID, false), // clock sysvar
+            AccountMeta::new_readonly(system_program::id(), false), // system program
         ],
         data: create_proposal_data,
     }];
@@ -1486,7 +1487,7 @@ fn test_execute_transaction_update_stale_transaction_index() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: create_transaction_data,
     }];
@@ -1507,7 +1508,7 @@ fn test_execute_transaction_update_stale_transaction_index() {
             AccountMeta::new(pda_proposal, false),      // proposal
             AccountMeta::new(pda_transaction, false),   // transaction
             AccountMeta::new(rent::ID, false),          // rent
-            AccountMeta::new(system_program::ID, false), // system program
+            AccountMeta::new(system_program::id(), false), // system program
         ],
         data: execute_transaction_data,
     }];
@@ -1574,7 +1575,7 @@ fn test_execute_transaction_cpi_call() {
             AccountMeta::new(pda_multisig, false),
             AccountMeta::new(pda_treasury, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
             AccountMeta::new(second_admin_pubkey, false),
             AccountMeta::new(fourth_member.pubkey(), false),
         ],
@@ -1583,7 +1584,7 @@ fn test_execute_transaction_cpi_call() {
     let multisig_result = common::build_and_send_transaction(&mut svm, &fee_payer, instruction);
     assert!(multisig_result.is_ok(), "Failed to create multisig");
 
-    let target_program_pubkey = system_program::ID;
+    let target_program_pubkey = system_program::id();
 
     let source_account = Keypair::new();
     let destination_account = Keypair::new();
@@ -1621,8 +1622,8 @@ fn test_execute_transaction_cpi_call() {
             AccountMeta::new(pda_proposal, false),       // proposal_account (will be created)
             AccountMeta::new_readonly(pda_multisig, false), // multisig_account (readonly)
             AccountMeta::new_readonly(rent::ID, false),  // rent sysvar
-            AccountMeta::new_readonly(solana_sdk::sysvar::clock::ID, false), // clock sysvar
-            AccountMeta::new_readonly(system_program::ID, false), // system program
+            AccountMeta::new_readonly(clock::ID, false), // clock sysvar
+            AccountMeta::new_readonly(system_program::id(), false), // system program
         ],
         data: create_proposal_data,
     }];
@@ -1679,7 +1680,7 @@ fn test_execute_transaction_cpi_call() {
             AccountMeta::new(fee_payer.pubkey(), true),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
-            AccountMeta::new(system_program::ID, false),
+            AccountMeta::new(system_program::id(), false),
         ],
         data: create_transaction_data,
     }];
@@ -1700,7 +1701,7 @@ fn test_execute_transaction_cpi_call() {
             AccountMeta::new(pda_proposal, false),      // proposal
             AccountMeta::new(pda_transaction, false),   // transaction
             AccountMeta::new(rent::ID, false),          // rent
-            AccountMeta::new(system_program::ID, false), // system program
+            AccountMeta::new(system_program::id(), false), // system program
             AccountMeta::new(source_account.pubkey(), true), // source account (signer)
             AccountMeta::new(destination_account.pubkey(), false), // destination account
         ],

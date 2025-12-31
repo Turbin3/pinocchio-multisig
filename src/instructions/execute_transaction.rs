@@ -1,14 +1,14 @@
 use core::mem::MaybeUninit;
 use pinocchio::{
     account_info::AccountInfo,
+    cpi::MAX_CPI_ACCOUNTS,
     program_error::ProgramError,
     sysvars::{clock::Clock, Sysvar},
     ProgramResult,
-    cpi::MAX_CPI_ACCOUNTS
 };
 
 use crate::state::multisig::MultisigState;
-use crate::state::proposal::{ProposalStatus, ProposalState};
+use crate::state::proposal::{ProposalState, ProposalStatus};
 use crate::state::transaction::TransactionState;
 
 pub struct AccountRefs<'a> {
@@ -16,26 +16,26 @@ pub struct AccountRefs<'a> {
     pub count: usize,
 }
 
-pub fn convert_accounts_to_refs<'a>(accounts: &'a [AccountInfo]) -> Result<AccountRefs<'a>, ProgramError> {
+pub fn convert_accounts_to_refs<'a>(
+    accounts: &'a [AccountInfo],
+) -> Result<AccountRefs<'a>, ProgramError> {
     let num_accounts = accounts.len();
-    
+
     if num_accounts > MAX_CPI_ACCOUNTS {
         return Err(ProgramError::InvalidArgument);
     }
 
     const UNINIT_REF: MaybeUninit<&AccountInfo> = MaybeUninit::<&AccountInfo>::uninit();
     let mut account_refs = [UNINIT_REF; MAX_CPI_ACCOUNTS];
-    
+
     for i in 0..num_accounts {
         unsafe {
             let account: &AccountInfo = accounts.get_unchecked(i);
-            
-            account_refs
-                .get_unchecked_mut(i)
-                .write(account);
+
+            account_refs.get_unchecked_mut(i).write(account);
         }
     }
-    
+
     Ok(AccountRefs {
         refs: account_refs,
         count: num_accounts,
@@ -77,7 +77,7 @@ pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &
 
     if yes_votes < multisig_data.min_threshold {
         return Err(ProgramError::InvalidAccountData);
-    }    
+    }
 
     if Clock::get()?.unix_timestamp > proposal_data.expiry as i64 {
         return Err(ProgramError::InvalidAccountData);
@@ -92,9 +92,12 @@ pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &
     let accounts_for_execute = &accounts;
 
     let account_refs_struct = convert_accounts_to_refs(accounts_for_execute)?;
-    
+
     let account_refs = unsafe {
-        core::slice::from_raw_parts(account_refs_struct.refs.as_ptr() as *const &AccountInfo, account_refs_struct.count)
+        core::slice::from_raw_parts(
+            account_refs_struct.refs.as_ptr() as *const &AccountInfo,
+            account_refs_struct.count,
+        )
     };
 
     TransactionState::execute(proposal_data.tx_type, account_refs)?;
