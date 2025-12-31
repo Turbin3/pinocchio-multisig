@@ -42,13 +42,9 @@ pub fn convert_accounts_to_refs<'a>(
     })
 }
 
-pub fn process_execute_transaction_instruction(
-    accounts: &[AccountInfo],
-    data: &[u8],
-) -> ProgramResult {
-    let [payer, multisig, proposal, transaction, rent, system_program, _remaining @ ..] = accounts
-    else {
-        return Err(ProgramError::NotEnoughAccountKeys);
+pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+    let [payer, multisig, proposal, transaction, rent, _system_program, _remaining @ ..] = accounts else {
+        return Err(ProgramError::NotEnoughAccountKeys)
     };
 
     if !payer.is_signer() {
@@ -63,19 +59,29 @@ pub fn process_execute_transaction_instruction(
 
     let proposal_data = ProposalState::from_account_info(proposal)?;
 
+    ProposalState::validate_pda(
+        proposal.key(),
+        multisig.key(),
+        proposal_data.bump,
+        proposal_data.proposal_id,
+    )?;
+
+    match proposal_data.status {
+        ProposalStatus::Succeeded | ProposalStatus::Cancelled | ProposalStatus::Failed => {
+            return Err(ProgramError::InvalidAccountData)
+        }
+        _ => {}
+    }
+
     let yes_votes = proposal_data.yes_votes;
 
     if yes_votes < multisig_data.min_threshold {
-        proposal_data.status = ProposalStatus::Failed;
         return Err(ProgramError::InvalidAccountData);
     }
 
     if Clock::get()?.unix_timestamp > proposal_data.expiry as i64 {
-        proposal_data.status = ProposalStatus::Failed;
         return Err(ProgramError::InvalidAccountData);
     }
-
-    proposal_data.status = ProposalStatus::Succeeded;
 
     let transaction_data = TransactionState::from_account_info(transaction)?;
 
@@ -95,6 +101,8 @@ pub fn process_execute_transaction_instruction(
     };
 
     TransactionState::execute(proposal_data.tx_type, account_refs)?;
+
+    proposal_data.status = ProposalStatus::Succeeded;
 
     Ok(())
 }
