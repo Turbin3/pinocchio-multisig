@@ -3,7 +3,7 @@ use crate::instructions::create_transaction::CreateTransactionIxData;
 use crate::instructions::update_members;
 use crate::instructions::update_multisig;
 use crate::state::multisig::MultisigState;
-use crate::state::proposal::{ProposalState, ProposalStatus, ProposalType};
+use crate::state::proposal::ProposalType;
 use bytemuck::{Pod, Zeroable};
 use core::mem::MaybeUninit;
 use pinocchio::{
@@ -40,6 +40,19 @@ impl TransactionState {
             return Err(ProgramError::InvalidAccountData);
         }
         Ok(Self::from_account_info_unchecked(account_info))
+    }
+
+    pub fn validate_pda(
+        pda: &Pubkey,
+        proposal: &Pubkey,
+        transaction_bump: u8,
+    ) -> Result<(), ProgramError> {
+        let seeds = &[TransactionState::SEED.as_bytes(), proposal.as_slice()];
+        let derived = pinocchio_pubkey::derive_address(seeds, Some(transaction_bump), &crate::ID);
+        if derived != *pda {
+            return Err(ProgramError::InvalidAccountOwner);
+        }
+        Ok(())
     }
 
     pub fn initialize(
@@ -111,7 +124,7 @@ impl TransactionState {
         let multisig_acc: &AccountInfo = account_info_iter
             .next()
             .ok_or(ProgramError::InvalidAccountData)?;
-        let proposal_acc: &AccountInfo = account_info_iter
+        let _proposal_acc: &AccountInfo = account_info_iter
             .next()
             .ok_or(ProgramError::InvalidAccountData)?;
         let transaction_acc: &AccountInfo = account_info_iter
@@ -127,12 +140,7 @@ impl TransactionState {
         let cpi_accounts_slice: &[&AccountInfo] = account_info_iter.as_slice();
 
         let multisig_state = MultisigState::from_account_info(multisig_acc)?;
-        let proposal_state = ProposalState::from_account_info(proposal_acc)?;
         let transaction_state = Self::from_account_info(transaction_acc)?;
-
-        if proposal_state.status != ProposalStatus::Succeeded {
-            return Err(ProgramError::InvalidAccountData);
-        }
 
         let (cpi_program_id, cpi_data_slice) = transaction_state.deserialize_instruction()?;
 

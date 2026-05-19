@@ -42,9 +42,14 @@ pub fn convert_accounts_to_refs<'a>(
     })
 }
 
-pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    let [payer, multisig, proposal, transaction, rent, _system_program, _remaining @ ..] = accounts else {
-        return Err(ProgramError::NotEnoughAccountKeys)
+pub fn process_execute_transaction_instruction(
+    accounts: &[AccountInfo],
+    _data: &[u8],
+) -> ProgramResult {
+    let [payer, multisig, proposal, transaction, _rent, _system_program, _remaining @ ..] =
+        accounts
+    else {
+        return Err(ProgramError::NotEnoughAccountKeys);
     };
 
     if !payer.is_signer() {
@@ -84,6 +89,8 @@ pub fn process_execute_transaction_instruction(accounts: &[AccountInfo], data: &
     }
 
     let transaction_data = TransactionState::from_account_info(transaction)?;
+
+    TransactionState::validate_pda(transaction.key(), proposal.key(), transaction_data.bump)?;
 
     if multisig_data.transaction_index != transaction_data.transaction_index {
         return Err(ProgramError::InvalidAccountData);

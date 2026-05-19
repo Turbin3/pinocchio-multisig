@@ -117,7 +117,6 @@ fn test_execute_transaction_update_member() {
 
     // Create transaction with UpdateMember instruction data
     let transaction_index: u64 = 0;
-    let transaction_primary_seed: u16 = 10;
 
     // Prepare UpdateMember instruction data
     let update_member_data = UpdateMemberIxData {
@@ -142,25 +141,23 @@ fn test_execute_transaction_update_member() {
     let create_transaction_data = [
         vec![4], // discriminator for CreateTransaction instruction
         transaction_index.to_le_bytes().to_vec(),
-        transaction_primary_seed.to_le_bytes().to_vec(),
         tx_buffer.to_vec(),
         buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4], // 4 bytes of padding for 8-byte alignment
+        vec![0; 6], // 6 bytes of padding for 8-byte alignment
     ]
     .concat();
 
     // Transaction PDA
-    let transaction_seed = [
-        (b"transaction"),
-        &transaction_primary_seed.to_le_bytes() as &[u8],
-    ];
+    let transaction_seed = [(b"transaction"), pda_proposal.as_ref()];
     let transaction_seeds = &transaction_seed[..];
     let (pda_transaction, _) = Pubkey::find_program_address(transaction_seeds, &program_id);
 
     let create_transaction_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin_pubkey, true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -169,7 +166,7 @@ fn test_execute_transaction_update_member() {
     }];
 
     let result =
-        common::build_and_send_transaction(&mut svm, &fee_payer, create_transaction_instruction);
+        common::build_and_send_transaction(&mut svm, &second_admin, create_transaction_instruction);
     assert!(result.is_ok());
     println!("✅ Transaction created with UpdateMember instruction");
 
@@ -278,7 +275,6 @@ fn test_execute_transaction_update_member() {
 
     // Create transaction for removing member (remove third_member)
     let remove_transaction_index: u64 = 1;
-    let remove_transaction_primary_seed: u16 = 20;
 
     let remove_member_data = UpdateMemberIxData {
         operation: 2, // 2 for remove member
@@ -300,24 +296,22 @@ fn test_execute_transaction_update_member() {
     let create_remove_transaction_data = [
         vec![4], // discriminator for CreateTransaction instruction
         remove_transaction_index.to_le_bytes().to_vec(),
-        remove_transaction_primary_seed.to_le_bytes().to_vec(),
         remove_tx_buffer.to_vec(),
         remove_buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4],
+        vec![0; 6],
     ]
     .concat();
 
-    let remove_transaction_seed = [
-        (b"transaction"),
-        &remove_transaction_primary_seed.to_le_bytes() as &[u8],
-    ];
+    let remove_transaction_seed = [(b"transaction"), pda_remove_proposal.as_ref()];
     let (pda_remove_transaction, _) =
         Pubkey::find_program_address(&remove_transaction_seed, &program_id);
 
     let create_remove_transaction_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin_pubkey, true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_remove_proposal, false),
             AccountMeta::new(pda_remove_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -327,7 +321,7 @@ fn test_execute_transaction_update_member() {
 
     let result = common::build_and_send_transaction(
         &mut svm,
-        &fee_payer,
+        &second_admin,
         create_remove_transaction_instruction,
     );
     assert!(result.is_ok());
@@ -408,7 +402,6 @@ fn test_execute_transaction_update_member() {
 
     // Create transaction for adding admin
     let add_admin_transaction_index: u64 = 2;
-    let add_admin_transaction_primary_seed: u16 = 50;
 
     let add_admin_data = UpdateMemberIxData {
         operation: 1, // 1 for add member
@@ -430,24 +423,22 @@ fn test_execute_transaction_update_member() {
     let create_add_admin_transaction_data = [
         vec![4], // discriminator for CreateTransaction instruction
         add_admin_transaction_index.to_le_bytes().to_vec(),
-        add_admin_transaction_primary_seed.to_le_bytes().to_vec(),
         add_admin_tx_buffer.to_vec(),
         add_admin_buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4],
+        vec![0; 6],
     ]
     .concat();
 
-    let add_admin_transaction_seed = [
-        (b"transaction"),
-        &add_admin_transaction_primary_seed.to_le_bytes() as &[u8],
-    ];
+    let add_admin_transaction_seed = [(b"transaction"), pda_add_admin_proposal.as_ref()];
     let (pda_add_admin_transaction, _) =
         Pubkey::find_program_address(&add_admin_transaction_seed, &program_id);
 
     let create_add_admin_transaction_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin_pubkey, true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_add_admin_proposal, false),
             AccountMeta::new(pda_add_admin_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -457,7 +448,7 @@ fn test_execute_transaction_update_member() {
 
     let result = common::build_and_send_transaction(
         &mut svm,
-        &fee_payer,
+        &second_admin,
         create_add_admin_transaction_instruction,
     );
     assert!(result.is_ok());
@@ -564,7 +555,6 @@ fn test_execute_transaction_update_member() {
 
     // Create transaction for adding normal member
     let add_normal_transaction_index: u64 = 3;
-    let add_normal_transaction_primary_seed: u16 = 70;
 
     let add_normal_data = UpdateMemberIxData {
         operation: 1, // 1 for add member
@@ -586,24 +576,22 @@ fn test_execute_transaction_update_member() {
     let create_add_normal_transaction_data = [
         vec![4], // discriminator for CreateTransaction instruction
         add_normal_transaction_index.to_le_bytes().to_vec(),
-        add_normal_transaction_primary_seed.to_le_bytes().to_vec(),
         add_normal_tx_buffer.to_vec(),
         add_normal_buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4],
+        vec![0; 6],
     ]
     .concat();
 
-    let add_normal_transaction_seed = [
-        (b"transaction"),
-        &add_normal_transaction_primary_seed.to_le_bytes() as &[u8],
-    ];
+    let add_normal_transaction_seed = [(b"transaction"), pda_add_normal_proposal.as_ref()];
     let (pda_add_normal_transaction, _) =
         Pubkey::find_program_address(&add_normal_transaction_seed, &program_id);
 
     let create_add_normal_transaction_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin_pubkey, true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_add_normal_proposal, false),
             AccountMeta::new(pda_add_normal_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -613,7 +601,7 @@ fn test_execute_transaction_update_member() {
 
     let result = common::build_and_send_transaction(
         &mut svm,
-        &fee_payer,
+        &second_admin,
         create_add_normal_transaction_instruction,
     );
     assert!(result.is_ok());
@@ -689,7 +677,6 @@ fn test_execute_transaction_update_member() {
 
     // Create transaction for removing first admin (remove second_admin)
     let remove_first_admin_transaction_index: u64 = 4;
-    let remove_first_admin_transaction_primary_seed: u16 = 60;
 
     let remove_first_admin_data = UpdateMemberIxData {
         operation: 2, // 2 for remove member
@@ -712,26 +699,23 @@ fn test_execute_transaction_update_member() {
     let create_remove_first_admin_transaction_data = [
         vec![4], // discriminator for CreateTransaction instruction
         remove_first_admin_transaction_index.to_le_bytes().to_vec(),
-        remove_first_admin_transaction_primary_seed
-            .to_le_bytes()
-            .to_vec(),
         remove_first_admin_tx_buffer.to_vec(),
         remove_first_admin_buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4],
+        vec![0; 6],
     ]
     .concat();
 
-    let remove_first_admin_transaction_seed = [
-        (b"transaction"),
-        &remove_first_admin_transaction_primary_seed.to_le_bytes() as &[u8],
-    ];
+    let remove_first_admin_transaction_seed =
+        [(b"transaction"), pda_remove_first_admin_proposal.as_ref()];
     let (pda_remove_first_admin_transaction, _) =
         Pubkey::find_program_address(&remove_first_admin_transaction_seed, &program_id);
 
     let create_remove_first_admin_transaction_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin_pubkey, true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_remove_first_admin_proposal, false),
             AccountMeta::new(pda_remove_first_admin_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -741,7 +725,7 @@ fn test_execute_transaction_update_member() {
 
     let result = common::build_and_send_transaction(
         &mut svm,
-        &fee_payer,
+        &second_admin,
         create_remove_first_admin_transaction_instruction,
     );
     assert!(result.is_ok());
@@ -870,7 +854,6 @@ fn test_execute_transaction_update_member() {
 
     // Create transaction for removing fifth_member
     let remove_fifth_member_transaction_index: u64 = 5;
-    let remove_fifth_member_transaction_primary_seed: u16 = 80;
 
     let remove_fifth_member_data = UpdateMemberIxData {
         operation: 2, // 2 for remove member
@@ -893,26 +876,23 @@ fn test_execute_transaction_update_member() {
     let create_remove_fifth_member_transaction_data = [
         vec![4], // discriminator for CreateTransaction instruction
         remove_fifth_member_transaction_index.to_le_bytes().to_vec(),
-        remove_fifth_member_transaction_primary_seed
-            .to_le_bytes()
-            .to_vec(),
         remove_fifth_member_tx_buffer.to_vec(),
         remove_fifth_member_buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4],
+        vec![0; 6],
     ]
     .concat();
 
-    let remove_fifth_member_transaction_seed = [
-        (b"transaction"),
-        &remove_fifth_member_transaction_primary_seed.to_le_bytes() as &[u8],
-    ];
+    let remove_fifth_member_transaction_seed =
+        [(b"transaction"), pda_remove_fifth_member_proposal.as_ref()];
     let (pda_remove_fifth_member_transaction, _) =
         Pubkey::find_program_address(&remove_fifth_member_transaction_seed, &program_id);
 
     let create_remove_fifth_member_transaction_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(fourth_member.pubkey(), true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_remove_fifth_member_proposal, false),
             AccountMeta::new(pda_remove_fifth_member_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -922,7 +902,7 @@ fn test_execute_transaction_update_member() {
 
     let result = common::build_and_send_transaction(
         &mut svm,
-        &fee_payer,
+        &fourth_member,
         create_remove_fifth_member_transaction_instruction,
     );
     assert!(result.is_ok());
@@ -1087,7 +1067,6 @@ fn test_execute_transaction_update_threshold() {
 
     // Create transaction with UpdateMultisig instruction data for threshold update
     let transaction_index: u64 = 0;
-    let transaction_primary_seed: u16 = 10;
 
     // Prepare UpdateMultisig instruction data for threshold update
     let update_multisig_data = UpdateMultisigIxData {
@@ -1108,25 +1087,23 @@ fn test_execute_transaction_update_threshold() {
     let create_transaction_data = [
         vec![4], // discriminator for CreateTransaction instruction
         transaction_index.to_le_bytes().to_vec(),
-        transaction_primary_seed.to_le_bytes().to_vec(),
         tx_buffer.to_vec(),
         buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4], // 4 bytes of padding for 8-byte alignment
+        vec![0; 6], // 6 bytes of padding for 8-byte alignment
     ]
     .concat();
 
     // Transaction PDA
-    let transaction_seed = [
-        (b"transaction"),
-        &transaction_primary_seed.to_le_bytes() as &[u8],
-    ];
+    let transaction_seed = [(b"transaction"), pda_proposal.as_ref()];
     let transaction_seeds = &transaction_seed[..];
     let (pda_transaction, _) = Pubkey::find_program_address(transaction_seeds, &program_id);
 
     let create_transaction_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin_pubkey, true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -1135,7 +1112,7 @@ fn test_execute_transaction_update_threshold() {
     }];
 
     let result =
-        common::build_and_send_transaction(&mut svm, &fee_payer, create_transaction_instruction);
+        common::build_and_send_transaction(&mut svm, &second_admin, create_transaction_instruction);
     assert!(result.is_ok());
     println!("✅ Transaction created with UpdateMultisig threshold instruction");
 
@@ -1266,7 +1243,6 @@ fn test_execute_transaction_update_spending_limit() {
 
     // Create transaction with UpdateMultisig instruction data for spending limit update
     let transaction_index: u64 = 0;
-    let transaction_primary_seed: u16 = 20;
 
     // Prepare UpdateMultisig instruction data for spending limit update
     let update_multisig_data = UpdateMultisigIxData {
@@ -1287,25 +1263,23 @@ fn test_execute_transaction_update_spending_limit() {
     let create_transaction_data = [
         vec![4], // discriminator for CreateTransaction instruction
         transaction_index.to_le_bytes().to_vec(),
-        transaction_primary_seed.to_le_bytes().to_vec(),
         tx_buffer.to_vec(),
         buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4], // 4 bytes of padding for 8-byte alignment
+        vec![0; 6], // 6 bytes of padding for 8-byte alignment
     ]
     .concat();
 
     // Transaction PDA
-    let transaction_seed = [
-        (b"transaction"),
-        &transaction_primary_seed.to_le_bytes() as &[u8],
-    ];
+    let transaction_seed = [(b"transaction"), pda_proposal.as_ref()];
     let transaction_seeds = &transaction_seed[..];
     let (pda_transaction, _) = Pubkey::find_program_address(transaction_seeds, &program_id);
 
     let create_transaction_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin_pubkey, true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -1314,7 +1288,7 @@ fn test_execute_transaction_update_spending_limit() {
     }];
 
     let result =
-        common::build_and_send_transaction(&mut svm, &fee_payer, create_transaction_instruction);
+        common::build_and_send_transaction(&mut svm, &second_admin, create_transaction_instruction);
     assert!(result.is_ok());
     println!("✅ Transaction created with UpdateMultisig spending limit instruction");
 
@@ -1445,7 +1419,6 @@ fn test_execute_transaction_update_stale_transaction_index() {
 
     // Create transaction with UpdateMultisig instruction data for stale transaction index update
     let transaction_index: u64 = 0;
-    let transaction_primary_seed: u16 = 30;
 
     // Prepare UpdateMultisig instruction data for stale transaction index update
     let update_multisig_data = UpdateMultisigIxData {
@@ -1466,25 +1439,23 @@ fn test_execute_transaction_update_stale_transaction_index() {
     let create_transaction_data = [
         vec![4], // discriminator for CreateTransaction instruction
         transaction_index.to_le_bytes().to_vec(),
-        transaction_primary_seed.to_le_bytes().to_vec(),
         tx_buffer.to_vec(),
         buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4], // 4 bytes of padding for 8-byte alignment
+        vec![0; 6], // 6 bytes of padding for 8-byte alignment
     ]
     .concat();
 
     // Transaction PDA
-    let transaction_seed = [
-        (b"transaction"),
-        &transaction_primary_seed.to_le_bytes() as &[u8],
-    ];
+    let transaction_seed = [(b"transaction"), pda_proposal.as_ref()];
     let transaction_seeds = &transaction_seed[..];
     let (pda_transaction, _) = Pubkey::find_program_address(transaction_seeds, &program_id);
 
     let create_transaction_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin_pubkey, true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -1493,7 +1464,7 @@ fn test_execute_transaction_update_stale_transaction_index() {
     }];
 
     let result =
-        common::build_and_send_transaction(&mut svm, &fee_payer, create_transaction_instruction);
+        common::build_and_send_transaction(&mut svm, &second_admin, create_transaction_instruction);
     assert!(result.is_ok());
     println!("✅ Transaction created with UpdateMultisig stale transaction index instruction");
 
@@ -1633,7 +1604,6 @@ fn test_execute_transaction_cpi_call() {
     assert!(result.is_ok());
 
     let transaction_index: u64 = 0;
-    let transaction_primary_seed: u16 = 40;
 
     // Format: [program_id (32 bytes)] + [instruction_data]
     let mut cpi_instruction_data = Vec::new();
@@ -1659,25 +1629,23 @@ fn test_execute_transaction_cpi_call() {
     let create_transaction_data = [
         vec![4], // discriminator for CreateTransaction instruction
         transaction_index.to_le_bytes().to_vec(),
-        transaction_primary_seed.to_le_bytes().to_vec(),
         tx_buffer.to_vec(),
         buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4], // 4 bytes of padding for 8-byte alignment
+        vec![0; 6], // 6 bytes of padding for 8-byte alignment
     ]
     .concat();
 
     // Transaction PDA
-    let transaction_seed = [
-        (b"transaction"),
-        &transaction_primary_seed.to_le_bytes() as &[u8],
-    ];
+    let transaction_seed = [(b"transaction"), pda_proposal.as_ref()];
     let transaction_seeds = &transaction_seed[..];
     let (pda_transaction, _) = Pubkey::find_program_address(transaction_seeds, &program_id);
 
     let create_transaction_instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin_pubkey, true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -1686,7 +1654,7 @@ fn test_execute_transaction_cpi_call() {
     }];
 
     let result =
-        common::build_and_send_transaction(&mut svm, &fee_payer, create_transaction_instruction);
+        common::build_and_send_transaction(&mut svm, &second_admin, create_transaction_instruction);
     assert!(result.is_ok());
     println!("✅ Transaction created with CPI instruction");
 
