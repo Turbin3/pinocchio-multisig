@@ -1,3 +1,5 @@
+use pinocchio_multisig::state::ProposalType;
+
 use {
     solana_instruction::{AccountMeta, Instruction},
     solana_pubkey::Pubkey,
@@ -10,10 +12,22 @@ mod common;
 
 #[test]
 fn test_create_transaction() {
-    let (mut svm, fee_payer, _second_admin, program_id) = common::setup_svm_and_program();
+    let (mut svm, fee_payer, second_admin, program_id) = common::setup_svm_and_program();
+    let (pda_multisig, _) = common::create_multisig(
+        &mut svm,
+        &fee_payer,
+        program_id,
+        vec![second_admin.pubkey()],
+    );
+    let (pda_proposal, _) = common::create_proposal(
+        &mut svm,
+        &second_admin,
+        program_id,
+        pda_multisig,
+        ProposalType::Cpi,
+    );
 
     let transaction_index: u64 = 1;
-    let primary_seed: u16 = 10;
     let buffer_size: u16 = 100;
     let mut tx_buffer = [0u8; 512];
     tx_buffer[..100].copy_from_slice(&[1u8; 100]); // Fill first 100 bytes with 1s
@@ -21,22 +35,23 @@ fn test_create_transaction() {
     let data = [
         vec![4], // discriminator for CreateTransaction instruction
         transaction_index.to_le_bytes().to_vec(),
-        primary_seed.to_le_bytes().to_vec(),
         tx_buffer.to_vec(),
         buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4], // 4 bytes of padding for 8-byte alignment
+        vec![0; 6], // 6 bytes of padding for 8-byte alignment
     ]
     .concat();
 
     // Transaction PDA
-    let seed = [(b"transaction"), &primary_seed.to_le_bytes() as &[u8]];
+    let seed = [(b"transaction"), pda_proposal.as_ref()];
     let seeds = &seed[..];
     let (pda_transaction, _) = Pubkey::find_program_address(seeds, &program_id);
 
     let instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin.pubkey(), true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -44,7 +59,7 @@ fn test_create_transaction() {
         data,
     }];
 
-    let result = common::build_and_send_transaction(&mut svm, &fee_payer, instruction);
+    let result = common::build_and_send_transaction(&mut svm, &second_admin, instruction);
     println!("create transaction result: {:?}", result);
     assert!(result.is_ok());
 
@@ -84,10 +99,22 @@ fn test_create_transaction() {
 
 #[test]
 fn test_create_transaction_max_buffer() {
-    let (mut svm, fee_payer, _second_admin, program_id) = common::setup_svm_and_program();
+    let (mut svm, fee_payer, second_admin, program_id) = common::setup_svm_and_program();
+    let (pda_multisig, _) = common::create_multisig(
+        &mut svm,
+        &fee_payer,
+        program_id,
+        vec![second_admin.pubkey()],
+    );
+    let (pda_proposal, _) = common::create_proposal(
+        &mut svm,
+        &second_admin,
+        program_id,
+        pda_multisig,
+        ProposalType::Cpi,
+    );
 
     let transaction_index: u64 = 2;
-    let primary_seed: u16 = 20;
     let buffer_size: u16 = 512; // Full buffer size
     let mut tx_buffer = [0u8; 512];
     tx_buffer.fill(0xFF); // Fill entire buffer with 0xFF
@@ -95,22 +122,23 @@ fn test_create_transaction_max_buffer() {
     let data = [
         vec![4], // discriminator for CreateTransaction instruction
         transaction_index.to_le_bytes().to_vec(),
-        primary_seed.to_le_bytes().to_vec(),
         tx_buffer.to_vec(),
         buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4], // 4 bytes of padding for 8-byte alignment
+        vec![0; 6], // 6 bytes of padding for 8-byte alignment
     ]
     .concat();
 
     // Transaction PDA
-    let seed = [(b"transaction"), &primary_seed.to_le_bytes() as &[u8]];
+    let seed = [(b"transaction"), pda_proposal.as_ref()];
     let seeds = &seed[..];
     let (pda_transaction, _) = Pubkey::find_program_address(seeds, &program_id);
 
     let instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin.pubkey(), true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -118,7 +146,7 @@ fn test_create_transaction_max_buffer() {
         data,
     }];
 
-    let result = common::build_and_send_transaction(&mut svm, &fee_payer, instruction);
+    let result = common::build_and_send_transaction(&mut svm, &second_admin, instruction);
     println!("create transaction max buffer result: {:?}", result);
     assert!(result.is_ok());
 
@@ -131,32 +159,45 @@ fn test_create_transaction_max_buffer() {
 
 #[test]
 fn test_create_transaction_empty_buffer() {
-    let (mut svm, fee_payer, _second_admin, program_id) = common::setup_svm_and_program();
+    let (mut svm, fee_payer, second_admin, program_id) = common::setup_svm_and_program();
+    let (pda_multisig, _) = common::create_multisig(
+        &mut svm,
+        &fee_payer,
+        program_id,
+        vec![second_admin.pubkey()],
+    );
+    let (pda_proposal, _) = common::create_proposal(
+        &mut svm,
+        &second_admin,
+        program_id,
+        pda_multisig,
+        ProposalType::Cpi,
+    );
 
     let transaction_index: u64 = 3;
-    let primary_seed: u16 = 30;
     let buffer_size: u16 = 0; // Empty buffer
     let tx_buffer = [0u8; 512]; // All zeros
 
     let data = [
         vec![4], // discriminator for CreateTransaction instruction
         transaction_index.to_le_bytes().to_vec(),
-        primary_seed.to_le_bytes().to_vec(),
         tx_buffer.to_vec(),
         buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4], // 4 bytes of padding for 8-byte alignment
+        vec![0; 6], // 6 bytes of padding for 8-byte alignment
     ]
     .concat();
 
     // Transaction PDA
-    let seed = [(b"transaction"), &primary_seed.to_le_bytes() as &[u8]];
+    let seed = [(b"transaction"), pda_proposal.as_ref()];
     let seeds = &seed[..];
     let (pda_transaction, _) = Pubkey::find_program_address(seeds, &program_id);
 
     let instruction = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin.pubkey(), true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -164,7 +205,7 @@ fn test_create_transaction_empty_buffer() {
         data,
     }];
 
-    let result = common::build_and_send_transaction(&mut svm, &fee_payer, instruction);
+    let result = common::build_and_send_transaction(&mut svm, &second_admin, instruction);
     println!("create transaction empty buffer result: {:?}", result);
     assert!(result.is_ok());
 
@@ -177,10 +218,22 @@ fn test_create_transaction_empty_buffer() {
 
 #[test]
 fn test_create_transaction_account_already_initialized() {
-    let (mut svm, fee_payer, _second_admin, program_id) = common::setup_svm_and_program();
+    let (mut svm, fee_payer, second_admin, program_id) = common::setup_svm_and_program();
+    let (pda_multisig, _) = common::create_multisig(
+        &mut svm,
+        &fee_payer,
+        program_id,
+        vec![second_admin.pubkey()],
+    );
+    let (pda_proposal, _) = common::create_proposal(
+        &mut svm,
+        &second_admin,
+        program_id,
+        pda_multisig,
+        ProposalType::Cpi,
+    );
 
     let transaction_index: u64 = 4;
-    let primary_seed: u16 = 40;
     let buffer_size: u16 = 50;
     let mut tx_buffer = [0u8; 512];
     tx_buffer[..50].copy_from_slice(&[0xABu8; 50]); // Fill first 50 bytes with 0xAB
@@ -188,15 +241,14 @@ fn test_create_transaction_account_already_initialized() {
     let data = [
         vec![4], // discriminator for CreateTransaction instruction
         transaction_index.to_le_bytes().to_vec(),
-        primary_seed.to_le_bytes().to_vec(),
         tx_buffer.to_vec(),
         buffer_size.to_le_bytes().to_vec(),
-        vec![0; 4], // 4 bytes of padding for 8-byte alignment
+        vec![0; 6], // 6 bytes of padding for 8-byte alignment
     ]
     .concat();
 
     // Transaction PDA
-    let seed = [(b"transaction"), &primary_seed.to_le_bytes() as &[u8]];
+    let seed = [(b"transaction"), pda_proposal.as_ref()];
     let seeds = &seed[..];
     let (pda_transaction, _) = Pubkey::find_program_address(seeds, &program_id);
 
@@ -204,7 +256,9 @@ fn test_create_transaction_account_already_initialized() {
     let instruction1 = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin.pubkey(), true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -212,14 +266,16 @@ fn test_create_transaction_account_already_initialized() {
         data: data.clone(),
     }];
 
-    let result1 = common::build_and_send_transaction(&mut svm, &fee_payer, instruction1);
+    let result1 = common::build_and_send_transaction(&mut svm, &second_admin, instruction1);
     assert!(result1.is_ok());
 
     // Second creation - should fail
     let instruction2 = vec![Instruction {
         program_id: program_id,
         accounts: vec![
-            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new(second_admin.pubkey(), true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
             AccountMeta::new(pda_transaction, false),
             AccountMeta::new(rent::ID, false),
             AccountMeta::new(system_program::id(), false),
@@ -227,9 +283,170 @@ fn test_create_transaction_account_already_initialized() {
         data,
     }];
 
-    let result2 = common::build_and_send_transaction(&mut svm, &fee_payer, instruction2);
+    let result2 = common::build_and_send_transaction(&mut svm, &second_admin, instruction2);
     println!("create transaction duplicate result: {:?}", result2);
     assert!(result2.is_err()); // Should fail because account is already initialized
 
     println!("✅ Success: Transaction creation correctly rejected already initialized account!");
+}
+
+#[test]
+fn test_create_transaction_rejects_pda_for_different_proposal() {
+    let (mut svm, fee_payer, second_admin, program_id) = common::setup_svm_and_program();
+    let (pda_multisig, _) = common::create_multisig(
+        &mut svm,
+        &fee_payer,
+        program_id,
+        vec![second_admin.pubkey()],
+    );
+    let (pda_proposal, _) = common::create_proposal(
+        &mut svm,
+        &second_admin,
+        program_id,
+        pda_multisig,
+        ProposalType::Cpi,
+    );
+
+    let transaction_index: u64 = 0;
+    let tx_buffer = [0u8; 512];
+    let buffer_size: u16 = 0;
+    let data = [
+        vec![4],
+        transaction_index.to_le_bytes().to_vec(),
+        tx_buffer.to_vec(),
+        buffer_size.to_le_bytes().to_vec(),
+        vec![0; 6],
+    ]
+    .concat();
+
+    let unrelated_proposal = Pubkey::new_unique();
+    let wrong_seed = [(b"transaction"), unrelated_proposal.as_ref()];
+    let (wrong_transaction_pda, _) = Pubkey::find_program_address(&wrong_seed, &program_id);
+
+    let instruction = vec![Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(second_admin.pubkey(), true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
+            AccountMeta::new(wrong_transaction_pda, false),
+            AccountMeta::new(rent::ID, false),
+            AccountMeta::new(system_program::id(), false),
+        ],
+        data,
+    }];
+
+    let result = common::build_and_send_transaction(&mut svm, &second_admin, instruction);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_create_transaction_rejects_non_member_front_run() {
+    let (mut svm, fee_payer, second_admin, program_id) = common::setup_svm_and_program();
+    let (pda_multisig, _) = common::create_multisig(
+        &mut svm,
+        &fee_payer,
+        program_id,
+        vec![second_admin.pubkey()],
+    );
+    let (pda_proposal, _) = common::create_proposal(
+        &mut svm,
+        &second_admin,
+        program_id,
+        pda_multisig,
+        ProposalType::Cpi,
+    );
+
+    let transaction_index: u64 = 0;
+    let tx_buffer = [0u8; 512];
+    let buffer_size: u16 = 0;
+    let data = [
+        vec![4],
+        transaction_index.to_le_bytes().to_vec(),
+        tx_buffer.to_vec(),
+        buffer_size.to_le_bytes().to_vec(),
+        vec![0; 6],
+    ]
+    .concat();
+
+    let seed = [(b"transaction"), pda_proposal.as_ref()];
+    let (pda_transaction, _) = Pubkey::find_program_address(&seed, &program_id);
+
+    let instruction = vec![Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(fee_payer.pubkey(), true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
+            AccountMeta::new(pda_transaction, false),
+            AccountMeta::new(rent::ID, false),
+            AccountMeta::new(system_program::id(), false),
+        ],
+        data,
+    }];
+
+    let result = common::build_and_send_transaction(&mut svm, &fee_payer, instruction);
+    assert!(result.is_err());
+    assert!(svm.get_account(&pda_transaction).is_none());
+}
+
+#[test]
+fn test_create_transaction_rejects_after_vote() {
+    let (mut svm, fee_payer, second_admin, program_id) = common::setup_svm_and_program();
+    let (pda_multisig, multisig_bump) = common::create_multisig(
+        &mut svm,
+        &fee_payer,
+        program_id,
+        vec![second_admin.pubkey()],
+    );
+    let (pda_proposal, proposal_bump) = common::create_proposal(
+        &mut svm,
+        &second_admin,
+        program_id,
+        pda_multisig,
+        ProposalType::Cpi,
+    );
+
+    common::vote(
+        &mut svm,
+        &second_admin,
+        program_id,
+        pda_multisig,
+        multisig_bump,
+        pda_proposal,
+        proposal_bump,
+        1,
+    );
+
+    let transaction_index: u64 = 0;
+    let tx_buffer = [0u8; 512];
+    let buffer_size: u16 = 0;
+    let data = [
+        vec![4],
+        transaction_index.to_le_bytes().to_vec(),
+        tx_buffer.to_vec(),
+        buffer_size.to_le_bytes().to_vec(),
+        vec![0; 6],
+    ]
+    .concat();
+
+    let seed = [(b"transaction"), pda_proposal.as_ref()];
+    let (pda_transaction, _) = Pubkey::find_program_address(&seed, &program_id);
+
+    let instruction = vec![Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(second_admin.pubkey(), true),
+            AccountMeta::new_readonly(pda_multisig, false),
+            AccountMeta::new_readonly(pda_proposal, false),
+            AccountMeta::new(pda_transaction, false),
+            AccountMeta::new(rent::ID, false),
+            AccountMeta::new(system_program::id(), false),
+        ],
+        data,
+    }];
+
+    let result = common::build_and_send_transaction(&mut svm, &second_admin, instruction);
+    assert!(result.is_err());
+    assert!(svm.get_account(&pda_transaction).is_none());
 }
